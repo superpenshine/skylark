@@ -1,0 +1,7 @@
+h5py
+numpy
+matplotlib
+tensorflow-gpu==1.12.0
+tb-nightly
+pillow
+future
