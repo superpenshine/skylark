@@ -26,6 +26,14 @@ sys_arg.add_argument("--f_gird", type=Path,
                     default='log_grid.dat',
                     help="log grid file name")
 
+sys_arg.add_argument("--h5_dir", type=Path,
+                    default='D:/sigma_data/data.h5',
+                    help="Suffix of data file name")
+
+sys_arg.add_argument("--log_dir", type=Path,
+                    default='./tmp',
+                    help="Directory to where TF store logs")
+
 sys_arg.add_argument("--pattern", type=str,
                     default='sigma_data*.bin',
                     help="Data file pattern")
@@ -34,13 +42,9 @@ sys_arg.add_argument("--nvar", type=int,
                     default=4,
                     help="nvar number")
 
-sys_arg.add_argument("--h5_dir", type=Path,
-                    default='D:/sigma_data/data.h5',
-                    help="Suffix of data file name")
-
-sys_arg.add_argument("--log_dir", type=Path,
-                    default='./tmp',
-                    help="Directory to where TF store logs")
+sys_arg.add_argument("--valid_size", type=float,
+                    default=0.8,
+                    help="Validation sample percentage (<=1.0)")
 
 
 def get_config():

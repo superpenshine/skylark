@@ -118,6 +118,7 @@ def preview(data, log_grid, polar = False, var = 1):
     # rp1, rp2 = np.meshgrid(np.linspace(0, 16, nx), theta)
     plt.pcolormesh(rp1, rp2, data[:,:,var])
     plt.colorbar()
+    plt.axis('off')
     plt.show()
 
     # fig.savefig("a.png", frameon=False, bbox_inces='tight', pad_inches=0)

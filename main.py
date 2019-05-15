@@ -7,6 +7,7 @@ from util.data_util import *
 from dataset.Astrodata import Astrodata
 
 from torch.utils.data import DataLoader, Dataset
+from torch.utils.data.sampler import SubsetRandomSampler
 from torch.utils.tensorboard import SummaryWriter
 from torchvision import transforms
 
@@ -41,11 +42,27 @@ def main():
                         transforms.ToTensor()
                         ])
                      )
-    dataloader = DataLoader(data, batch_size=4, shuffle=True)
+
+    n_data = len(data)
+    np.random.seed(1234)
+    indices = list(range(len(data)))
+    np.random.shuffle(indices)
+    split = int(n_data * config.valid_size)
+
+    train, valid = indices[:split], indices[split:]
+    train_sampler = SubsetRandomSampler(train)
+    valid_sampler = SubsetRandomSampler(valid)
+    
+    train_loader = DataLoader(data, 
+                              batch_size = 4, 
+                              sampler = train_sampler)
+    valid_loader = DataLoader(data, 
+                              batch_size = 4, 
+                              sampler = valid_sampler)
 
     writer = SummaryWriter(log_dir = str(config.log_dir))
 
-    for b_id, (i0, i1, label) in enumerate(dataloader):
+    for b_id, (i0, i1, label) in enumerate(train_loader):
         i1 = i1[0,1,:,:]
         writer.add_image('test_figure0', i1, 0, dataformats='HW')
         writer.close()
