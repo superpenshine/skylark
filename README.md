@@ -11,5 +11,8 @@ Python requirements:
 * numpy
 * matplotlib
 * h5py
-* tensorflow-gpu==1.12.0
+* tensorflow-gpu==1.12.0 (Ignore this)
+* tb-nightly
+* Future
+* Pillow
 

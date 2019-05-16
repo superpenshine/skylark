@@ -38,7 +38,7 @@ def main():
                      rtn_log_grid = False, 
                      transform = transforms.Compose([
                         transforms.ToPILImage(), 
-                        transforms.Resize((32, 32)),
+                        # transforms.Resize((32, 32)),
                         transforms.ToTensor()
                         ])
                      )
