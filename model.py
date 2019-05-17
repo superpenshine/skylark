@@ -58,10 +58,37 @@ class ResUnit(nn.Module):
 
 
 class ResNet(nn.Module):
-    """docstring for ResNet"""
+    '''
+    Simple ResNet:
+    '''
+    def __init__(self, n_class = 4):
+        super(ResNet, self).__init__()
+
+        self.layer1 = self._make_layer(8, 64)
+        self.layer2 = self._make_layer(64, 64)
+        self.layer3 = self._make_layer(64, 4)
+
+    def _make_layer(self, fan_in, fan_out):
+        '''
+        Construct major layers with ResUnit
+        '''
+        layers = []
+        layers.append(ResUnit(fan_in, fan_out))
+        return nn.Sequential(*layers)
+
+    def forward(self, x):
+        x = self.layer1(x)
+        x = self.layer2(x)
+        x = self.layer3(x)
+
+        return x
+
+
+class ResNetxx(nn.Module):
+    """docstring for ResNetxx"""
      # (W−F+2P)/S+1
     def __init__(self, block, layers, n_class = 4):
-        super(ResNet, self).__init__()
+        super(ResNetxx, self).__init__()
         self.fan_in = 64
 
         self.ud_pad = CircularPad2d((0, 0, 3, 3))
@@ -81,7 +108,7 @@ class ResNet(nn.Module):
 
     def _make_layer(self, block, fan_out, blocks, stride=1):
         '''
-        Construct major layers ResNet like
+        Construct major layers ResNetxx like
         '''
         downsample = None
         if stride != 1 or self.fan_in != fan_out * block.expansion:
@@ -120,4 +147,4 @@ class ResNet(nn.Module):
         return x
 
 def ResNet18(**kwargs):
-    return ResNet(ResUnit, [2, 2, 2, 2], **kwargs)
+    return ResNetxx(ResUnit, [2, 2, 2, 2], **kwargs)

@@ -36,8 +36,14 @@ class network(object):
         '''
         Prepare train/test data
         '''
+        # ex: outputsize = 128 * 128
+        #     inputsize  = 130 * 130
+        #     pad 150 pixels
         trans = transforms.Compose([transforms.ToPILImage(), 
-                                    transforms.Resize((64, 64)),
+                                    # transforms.Resize((128, 128)),
+                                    transforms.Pad((0, 150, 0, 150), 'circular'), 
+                                    transforms.Pad((150, 0, 150, 0), 'constant'), 
+                                    transforms.RandomCrop(130, 130), 
                                     transforms.ToTensor()])
 
         data = Astrodata(self.data_dir, 
@@ -72,7 +78,7 @@ class network(object):
         else:
             self.device = torch.device('cpu')
 
-        self.model = ResNet18().to(self.device)
+        self.model = ResNet().to(self.device)
         self.optimizer = optim.Adam(self.model.parameters(), lr=self.lr)
         self.scheduler = optim.lr_scheduler.MultiStepLR(self.optimizer, milestones=[75, 150], gamma=0.5)
         self.criterion = L1Loss().to(self.device)
