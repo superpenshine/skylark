@@ -29,10 +29,10 @@ class ResUnit(nn.Module):
         self.lr_pad = nn.ReplicationPad2d((1, 1, 0, 0))
 
         self.conv1 = ConvBlock(fan_in, fan_out, stride=stride)
-        self.bn1 = nn.BatchNorm2d(fan_out)
+        self.bn = nn.BatchNorm2d(fan_out)
+        # self.bn = nn.GroupNorm(4, fan_in)
         self.relu = nn.ReLU(inplace=True)
         self.conv2 = ConvBlock(fan_out, fan_out)
-        self.bn2 = nn.BatchNorm2d(fan_out)
         self.downsample = downsample
 
     def forward(self, x):
@@ -40,13 +40,13 @@ class ResUnit(nn.Module):
         x = self.ud_pad(x)
         x = self.lr_pad(x)
         x = self.conv1(x)
-        x = self.bn1(x)
+        x = self.bn(x)
         x = self.relu(x)
 
         x = self.ud_pad(x)
         x = self.lr_pad(x)
         x = self.conv2(x)
-        x = self.bn2(x)
+        x = self.bn(x)
 
         if self.downsample is not None:
             residual = self.downsample(residual)
@@ -63,7 +63,6 @@ class ResNet(nn.Module):
     '''
     def __init__(self, n_class = 4):
         super(ResNet, self).__init__()
-
         self.layer1 = self._make_layer(8, 64)
         self.layer2 = self._make_layer(64, 64)
         self.layer3 = self._make_layer(64, 4)
