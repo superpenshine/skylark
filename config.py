@@ -3,6 +3,7 @@
 import os
 import argparse
 from pathlib import Path
+from torch.cuda import is_available
 
 
 arg_lists = []
@@ -46,6 +47,33 @@ sys_arg.add_argument("--valid_size", type=float,
                     default=0.8,
                     help="Validation sample percentage (<=1.0)")
 
+sys_arg.add_argument("--min_step_diff", type=int,
+                    default=None,
+                    help="None or an integer indicating min step difference")
+
+sys_arg.add_argument("--max_step_diff", type=int,
+                    default=None,
+                    help="None or an integer indicating max step difference")
+
+sys_arg.add_argument("--batch_size", type=int,
+                    default=1,
+                    help="Batch size")
+
+sys_arg.add_argument("--lr", type=float,
+                    default=0.0001,
+                    help="Learning rate")
+
+sys_arg.add_argument("--epochs", type=int,
+                    default=1,
+                    help="Number of epochs")
+
+sys_arg.add_argument("--checkpoint_freq", type=int, 
+                    default=1, 
+                    help="Number of epochs between each checkpoint")
+
+sys_arg.add_argument("--cuda", type=bool, 
+                    default=is_available(), 
+                    help="Cuda enabled or use cpu")
 
 def get_config():
     config, unparsed = parser.parse_known_args()

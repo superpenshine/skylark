@@ -1,6 +1,6 @@
 # Custom Padding class
 
-from torch.nn.functional import _pad_circular
+from torch.nn.functional import _pad_circular, pad
 from torch._jit_internal import weak_module, weak_script_method
 from torch.nn.modules.utils import _quadruple
 from torch.nn.modules.module import Module
@@ -11,7 +11,7 @@ class _CircularPadNd(Module):
 
     @weak_script_method
     def forward(self, input):
-        return F.pad(input, self.padding, 'circular')
+        return pad(input, self.padding, 'circular')
 
     def extra_repr(self):
         return '{}'.format(self.padding)

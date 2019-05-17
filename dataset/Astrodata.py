@@ -39,7 +39,7 @@ class Astrodata(Dataset):
         m: label img
         '''
         d, l, h, m = self.mapping(idx)
-        print(d, l, h, m)
+        # print(d, l, h, m)
         l = self.data[d][str(l)]
         h = self.data[d][str(h)]
         m = self.data[d][str(m)]

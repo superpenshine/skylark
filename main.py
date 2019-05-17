@@ -1,10 +1,10 @@
 # main file
 
-import io
 from config import get_config, print_usage
 from network_tf import nn
 from util.data_util import *
 from dataset.Astrodata import Astrodata
+from network_pt import network
 
 from torch.utils.data import DataLoader, Dataset
 from torch.utils.data.sampler import SubsetRandomSampler
@@ -32,41 +32,45 @@ def main():
     # import pdb
     # pdb.set_trace()
     
-    data = Astrodata(config.h5_dir, 
-                     min_step_diff = 10, 
-                     max_step_diff = 1500, 
-                     rtn_log_grid = False, 
-                     transform = transforms.Compose([
-                        transforms.ToPILImage(), 
-                        # transforms.Resize((32, 32)),
-                        transforms.ToTensor()
-                        ])
-                     )
+    # dataset, loader test
+    # data = Astrodata(config.h5_dir, 
+    #                  min_step_diff = 10, 
+    #                  max_step_diff = 1500, 
+    #                  rtn_log_grid = False, 
+    #                  transform = transforms.Compose([
+    #                     transforms.ToPILImage(), 
+    #                     # transforms.Resize((32, 32)),
+    #                     transforms.ToTensor()
+    #                     ])
+    #                  )
 
-    n_data = len(data)
-    np.random.seed(1234)
-    indices = list(range(len(data)))
-    np.random.shuffle(indices)
-    split = int(n_data * config.valid_size)
+    # n_data = len(data)
+    # np.random.seed(1234)
+    # indices = list(range(len(data)))
+    # np.random.shuffle(indices)
+    # split = int(n_data * config.valid_size)
 
-    train, valid = indices[:split], indices[split:]
-    train_sampler = SubsetRandomSampler(train)
-    valid_sampler = SubsetRandomSampler(valid)
-    
-    train_loader = DataLoader(data, 
-                              batch_size = 4, 
-                              sampler = train_sampler)
-    valid_loader = DataLoader(data, 
-                              batch_size = 4, 
-                              sampler = valid_sampler)
+    # train, valid = indices[:split], indices[split:]
+    # train_sampler = SubsetRandomSampler(train)
+    # valid_sampler = SubsetRandomSampler(valid)
 
-    writer = SummaryWriter(log_dir = str(config.log_dir))
+    # train_loader = DataLoader(data, 
+    #                           batch_size = 4, 
+    #                           sampler = train_sampler)
+    # valid_loader = DataLoader(data, 
+    #                           batch_size = 4, 
+    #                           sampler = valid_sampler)
 
-    for b_id, (i0, i1, label) in enumerate(train_loader):
-        i1 = i1[0,1,:,:]
-        writer.add_image('test_figure0', i1, 0, dataformats='HW')
-        writer.close()
-        break
+    # writer = SummaryWriter(log_dir = str(config.log_dir))
+
+    # for b_id, (i0, i1, label) in enumerate(train_loader):
+    #     i1 = i1[0,1,:,:]
+    #     writer.add_image('test_figure0', i1, 0, dataformats='HW')
+    #     writer.close()
+    #     break
+
+    solver = network(config)
+    solver.run()
 
 
 if __name__ == "__main__":
