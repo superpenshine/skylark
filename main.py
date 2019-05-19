@@ -2,14 +2,14 @@
 
 from config import get_config, print_usage
 from network_tf import nn
+from network_pt import network
 from util.data_util import *
 from dataset.Astrodata import Astrodata
-from network_pt import network
 
+from torchvision import transforms
 from torch.utils.data import DataLoader, Dataset
 from torch.utils.data.sampler import SubsetRandomSampler
 from torch.utils.tensorboard import SummaryWriter
-from torchvision import transforms
 
 
 config, unparsed = get_config()

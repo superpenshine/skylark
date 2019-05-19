@@ -1,8 +1,9 @@
 # Neural Network Class
 
 import numpy as np
-from model import ResNet18
+from model import ResNet18, ResNet
 from pathlib import Path
+from util.transform import CustomPad, GroupRandomCrop
 from dataset.Astrodata import Astrodata
 
 import torch
@@ -36,18 +37,21 @@ class network(object):
         '''
         Prepare train/test data
         '''
-        trans = transforms.Compose([transforms.ToPILImage(), 
-                                    # transforms.Resize((128, 128)),
-                                    transforms.Pad((0, 64, 0, 64), 'circular'), 
-                                    transforms.Pad((64, 0, 64, 0), 'constant'), 
-                                    transforms.RandomCrop(128, 128), 
-                                    transforms.ToTensor()])
+        trans = [CustomPad((0, 64, 0, 64), 'circular'), 
+                 CustomPad((64, 0, 64, 0), 'zero', constant_values=0), 
+                 GroupRandomCrop((130, 130), label_size=(128, 128)), 
+                 transforms.ToPILImage(), 
+                 # transforms.Resize((128, 128)), # Using RandomCrop now
+                 # transforms.Pad((64, 0, 64, 0), 'constant'), # only supports RGB
+                 # transforms.RandomCrop(128, 128), # won't work since we want random crop at the same posion of the three images
+                 transforms.ToTensor()]
 
         data = Astrodata(self.data_dir, 
                          min_step_diff = self.min_step_diff, 
                          max_step_diff = self.max_step_diff, 
                          rtn_log_grid = False, 
-                         transform = trans)
+                         transforms = trans, 
+                         group_trans_id = [2]) # RandomCrop is group op
 
         np.random.seed(1234)
         indices = list(range(len(data)))
@@ -99,8 +103,6 @@ class network(object):
             duo, label = duo.to(self.device), label.to(self.device)
             self.optimizer.zero_grad()
             output = self.model(duo)
-            import pdb
-            pdb.set_trace()
             # Avg per img loss
             loss = self.criterion(output, label)
             loss.backward()

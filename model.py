@@ -15,9 +15,9 @@ from util.padding import CircularPad2d
 #         x = self.lf_pad(x)
 
 
-def ConvBlock(fan_in, fan_out, stride=1):
+def ConvBlock(fan_in, fan_out, stride=1, bias=False):
     # 3x3 convolution with padding
-    return nn.Conv2d(fan_in, fan_out, kernel_size=3, stride=stride, bias=False)
+    return nn.Conv2d(fan_in, fan_out, kernel_size=3, stride=stride, bias=bias)
 
 
 class ResUnit(nn.Module):
@@ -63,9 +63,13 @@ class ResNet(nn.Module):
     '''
     def __init__(self, n_class = 4):
         super(ResNet, self).__init__()
-        self.layer1 = self._make_layer(8, 64)
+        self.conv1 = ConvBlock(8, 64, bias=True)
+        self.layer1 = self._make_layer(64, 64)
         self.layer2 = self._make_layer(64, 64)
-        self.layer3 = self._make_layer(64, 4)
+        self.layer3 = self._make_layer(64, 64)
+        self.ud_pad = CircularPad2d((0, 0, 1, 1))
+        self.lr_pad = nn.ReplicationPad2d((1, 1, 0, 0))
+        self.out_conv = ConvBlock(64, 4, bias=True)
 
     def _make_layer(self, fan_in, fan_out):
         '''
@@ -76,10 +80,16 @@ class ResNet(nn.Module):
         return nn.Sequential(*layers)
 
     def forward(self, x):
+        x = self.conv1(x)
+        print(x.size())
         x = self.layer1(x)
+        print(x.size())
         x = self.layer2(x)
         x = self.layer3(x)
 
+        x = self.ud_pad(x)
+        x = self.lr_pad(x)
+        x = self.out_conv(x)
         return x
 
 

@@ -10,7 +10,7 @@ class Astrodata(Dataset):
     Astro dataset class
     ''' 
 
-    def __init__(self, data_dir, min_step_diff = None, max_step_diff = None, rtn_log_grid = False, transform = None):
+    def __init__(self, data_dir, min_step_diff = None, max_step_diff = None, rtn_log_grid = False, transforms = None, group_trans_id = None):
         '''
         transform: transformations to apply on imgs
         '''
@@ -21,7 +21,8 @@ class Astrodata(Dataset):
         self.min_step_diff = min_step_diff
         self.max_step_diff = max_step_diff
         self.rtn_log_grid = rtn_log_grid
-        self.transform = transform
+        self.transforms = transforms
+        self.group_trans_id = group_trans_id
 
         self.calc_valid_step_diffs()
         self.step_diff_validity_check()
@@ -50,14 +51,20 @@ class Astrodata(Dataset):
         m = self.normalize(np.array(m))
 
         # Apply transforms
-        if self.transform:
-            l = self.transform(l)
-            h = self.transform(h)
-            m = self.transform(m)
+        if self.transforms:
+            for t_i, transform in enumerate(self.transforms):
+                # second transform is a group opration
+                if t_i in self.group_trans_id:
+                    l, h, m = transform(l, h, m)
+                    continue
+                l = transform(l)
+                h = transform(h)
+                m = transform(m)
 
         if self.rtn_log_grid:
             log_grid = np.asarray(self.data[d]["log_grid"])
             return log_grid, l, h, m
+
         return l, h, m
 
 

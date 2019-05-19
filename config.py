@@ -56,7 +56,7 @@ sys_arg.add_argument("--max_step_diff", type=int,
                     help="None or an integer indicating max step difference")
 
 sys_arg.add_argument("--batch_size", type=int,
-                    default=1,
+                    default=2,
                     help="Batch size")
 
 sys_arg.add_argument("--lr", type=float,
