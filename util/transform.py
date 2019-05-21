@@ -96,10 +96,11 @@ class GroupRandomCrop(object):
             assert len(label_size) == 2, \
             'Label image output size must be an integer or a 2-element tuple'
             self.label_size = label_size
-        if self.size[0] < self.label_size[0] or self.size[1] < self.label_size[1]
+
+        self.inner_pad_size = (int(0.5 * (self.size[0] - self.label_size[0])), int(0.5 * (self.size[1] - self.label_size[1])))
+        if self.inner_pad_size[0] * self.inner_pad_size[1] < 0:
             raise ValueError(
                 "Label size {} must be smaller then img size {}".format(self.label_size, self.size))
-
 
         self.numpy_mode = False
 
@@ -133,16 +134,91 @@ class GroupRandomCrop(object):
         if self.size[0] > h or self.size[1] > w:
             raise ValueError(
                 "Crop output size {}x{} must be <= {}x{}, or pad more first".format(self.size[0], self.size[1], h, w))
-        if self.label_size[0] > h or self.label_size[1] > w:
-            raise ValueError(
-                "Crop label image size {}x{} must be <= {}x{}, or pad more first".format(self.label_size[0], self.label_size[1], h, w))
 
         i, j = self.get_params(h, w)
         if not self.numpy_mode:
-            return low.crop((j, i, j+self.size[1], i+self.size[0])), high.crop((j, i, j+self.size[1], i+self.size[0])), mid.crop((j, i, j+self.label_size[1], i+self.label_size[0]))
+            return low.crop((j, i, j+self.size[1], i+self.size[0])), \
+            high.crop((j, i, j+self.size[1], i+self.size[0])), \
+            mid.crop((j+self.inner_pad_size[1], i+self.inner_pad_size[0], j+self.label_size[1], i+self.label_size[0]))
 
-        return low[i:i+self.size[0], j:j+self.size[1]], high[i:i+self.size[0], j:j+self.size[1]], mid[i:i+self.label_size[0], j:j+self.label_size[1]]
+        return low[i:i+self.size[0], j:j+self.size[1]], \
+        high[i:i+self.size[0], j:j+self.size[1]], \
+        mid[i+self.inner_pad_size[0]:i+self.inner_pad_size[0]+self.label_size[0], j+self.inner_pad_size[1]:j+self.inner_pad_size[1]+self.label_size[1]]
 
 
     def __repr__(self):
         return self.__class__.__name__ + '(size={0}, label_size={})'.format(self.size, self.label_size)
+
+
+# class GroupRandomCrop2(object):
+#     '''
+#     Return a random crop at the same position of three input imgs
+#     input: 2 input images and 1 label image
+#     '''
+#     def __init__(self, sizes):
+#         '''
+#         sizes: ((height, width), (height, width), ...) or (height, width)
+#         '''
+#         assert isinstance(sizes, (tuple, list)), \
+#         "Sizes must be in format" + \
+#         "((height, width), (height, width), ...) or (height, width)"
+
+#         self.sizes = []
+#         if len(sizes) == 2 and isinstance(sizes[0], int) and isinstance(sizes[1], int):
+#             self.sizes.append(list(sizes))
+#         else:
+#             for pair in sizes:
+#                 if not isinstance(pair, (tuple, list)) or \
+#                 len(pair) != 2 or \
+#                 not isinstance(pair[0], int) or \
+#                 not isinstance(pair[1], int):
+#                     raise ValueError(
+#                         "Sizes must be in format" + 
+#                         "((height, width), (height, width), ...) or (height, width)")
+#                 self.sizes.append(list(pair))
+
+#         self.numpy_mode = False
+
+
+    # def get_params(self, h, w):
+    #     '''
+    #     Return i, j
+    #     i, j: coordinates of upper left conner
+    #     '''
+    #     out_h_max = np.array(self.sizes)
+    #     i = np.random.randint(0, h - self.size[0])
+    #     j = np.random.randint(0, h - self.size[1])
+
+    #     return i, j
+
+
+    # def __call__(self, imgs):
+    #     '''
+    #     l, h, m: img_t0, img_t1, img_t0.5
+    #     '''
+    #     if not isinstance(low, (Image.Image, np.ndarray)):
+    #         raise TypeError(
+    #             'img should be either PIL Image or ndarray. Got {}'.format(type(l)))
+    #     if isinstance(low, np.ndarray):
+    #         self.numpy_mode = True
+
+
+    #     if self.numpy_mode:
+    #         h, w = imgs[0].shape[:2]
+    #     else:
+    #         w, h = imgs[0].size
+
+    #     for pair in self.sizes:
+    #         if self.pair[0] > h or self.pair[1] > w:
+    #             raise ValueError(
+    #                 "Crop output sizes {} must all <= {}, or pad more first".format(self.sizes, (h, w)))
+
+    #     i, j = self.get_params(h, w)
+    #     if not self.numpy_mode:
+    #         return low.crop((j, i, j+self.size[1], i+self.size[0])), high.crop((j, i, j+self.size[1], i+self.size[0])), mid.crop((j, i, j+self.size[1], i+self.size[0]))
+
+    #     return low[i:i+self.size[0], j:j+self.size[1]], high[i:i+self.size[0], j:j+self.size[1]], mid[i:i+self.size[0], j:j+self.size[1]]
+
+
+    # def __repr__(self):
+    #     return self.__class__.__name__ + '(size={0})'.format(self.size)

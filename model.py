@@ -23,33 +23,41 @@ def ConvBlock(fan_in, fan_out, stride=1, bias=False):
 class ResUnit(nn.Module):
     expansion = 1
 
-    def __init__(self, fan_in, fan_out, stride=1, downsample=None):
+    def __init__(self, fan_in, fan_out, stride=1, downsample=None, padding=True):
         super(ResUnit, self).__init__()
-        self.ud_pad = CircularPad2d((0, 0, 1, 1))
-        self.lr_pad = nn.ReplicationPad2d((1, 1, 0, 0))
-
         self.conv1 = ConvBlock(fan_in, fan_out, stride=stride)
         self.bn = nn.BatchNorm2d(fan_out)
         # self.bn = nn.GroupNorm(4, fan_in)
         self.relu = nn.ReLU(inplace=True)
         self.conv2 = ConvBlock(fan_out, fan_out)
         self.downsample = downsample
+        self.padding = padding
+
+        if padding:
+            self.ud_pad = CircularPad2d((0, 0, 1, 1))
+            self.lr_pad = nn.ReplicationPad2d((1, 1, 0, 0))
 
     def forward(self, x):
         residual = x
-        x = self.ud_pad(x)
-        x = self.lr_pad(x)
+
+        if self.padding:
+            x = self.ud_pad(x)
+            x = self.lr_pad(x)
         x = self.conv1(x)
         x = self.bn(x)
         x = self.relu(x)
 
-        x = self.ud_pad(x)
-        x = self.lr_pad(x)
+        if self.padding:
+            x = self.ud_pad(x)
+            x = self.lr_pad(x)
         x = self.conv2(x)
         x = self.bn(x)
 
         if self.downsample is not None:
             residual = self.downsample(residual)
+        # crop residual if no padding
+        if not self.padding:
+            residual = residual[:,:,:x.size()[2],:x.size()[3]]
 
         x += residual
         x = self.relu(x)
@@ -63,33 +71,61 @@ class ResNet(nn.Module):
     '''
     def __init__(self, n_class = 4):
         super(ResNet, self).__init__()
+        self.fan_in = 64
+        self.padding = False
         self.conv1 = ConvBlock(8, 64, bias=True)
-        self.layer1 = self._make_layer(64, 64)
-        self.layer2 = self._make_layer(64, 64)
-        self.layer3 = self._make_layer(64, 64)
-        self.ud_pad = CircularPad2d((0, 0, 1, 1))
-        self.lr_pad = nn.ReplicationPad2d((1, 1, 0, 0))
-        self.out_conv = ConvBlock(64, 4, bias=True)
+        # self.layer1 = self._make_layer1(64, 128, padding=self.padding)
+        # self.layer2 = self._make_layer1(128, 256, padding=self.padding)
+        # self.layer3 = self._make_layer1(256, 512, padding=self.padding)
+        self.layer1 = self._make_layer2(ResUnit, 128, 1, padding=self.padding)
+        self.layer2 = self._make_layer2(ResUnit, 256, 1, padding=self.padding)
+        self.layer3 = self._make_layer2(ResUnit, 512, 1, padding=self.padding)
 
-    def _make_layer(self, fan_in, fan_out):
+        if self.padding:
+            self.ud_pad = CircularPad2d((0, 0, 1, 1))
+            self.lr_pad = nn.ReplicationPad2d((1, 1, 0, 0))
+        self.out_conv = ConvBlock(512 * ResUnit.expansion, 4, bias=True)
+
+    # def _make_layer1(self, fan_in, fan_out, **kwargs):
+    #     '''
+    #     Construct major layers with ResUnit
+    #     '''
+    #     layers = []
+    #     layers.append(ResUnit(fan_in, fan_out, **kwargs))
+
+    #     return nn.Sequential(*layers)
+
+    def _make_layer2(self, block, fan_out, blocks, stride=1, **kwargs):
         '''
-        Construct major layers with ResUnit
+        Construct major layers ResNetxx like
         '''
+        downsample = None
+        if stride != 1 or self.fan_in != fan_out * block.expansion:
+            downsample = nn.Sequential(
+                nn.Conv2d(self.fan_in, fan_out * block.expansion, kernel_size=1, stride=stride, bias=False),
+                nn.BatchNorm2d(fan_out * block.expansion),
+            )
+
         layers = []
-        layers.append(ResUnit(fan_in, fan_out))
+        layers.append(block(self.fan_in, fan_out, stride, downsample, **kwargs))
+        self.fan_in = fan_out * block.expansion
+
+        for i in range(1, blocks):
+            layers.append(block(self.fan_in, fan_out))
+
         return nn.Sequential(*layers)
 
     def forward(self, x):
         x = self.conv1(x)
-        print(x.size())
         x = self.layer1(x)
-        print(x.size())
         x = self.layer2(x)
         x = self.layer3(x)
 
-        x = self.ud_pad(x)
-        x = self.lr_pad(x)
+        if self.padding:
+            x = self.ud_pad(x)
+            x = self.lr_pad(x)
         x = self.out_conv(x)
+
         return x
 
 

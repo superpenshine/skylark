@@ -1,5 +1,7 @@
 # skylark
-Astro project
+Astro project, interframe prediction of protoplanetary disk using resnet.
+
+<img src="https://github.com/superpenshine/skylark/tmp/example.jpg" alt="Protoplanetary disk" width="640">
 
 ## Requirements
 

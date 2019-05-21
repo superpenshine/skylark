@@ -55,8 +55,16 @@ sys_arg.add_argument("--max_step_diff", type=int,
                     default=None,
                     help="None or an integer indicating max step difference")
 
+sys_arg.add_argument("--input_size", type=tuple, 
+                    default=(130, 130), 
+                    help="Input image size")
+
+sys_arg.add_argument("--label_size", type=tuple, 
+                    default=(114, 114), 
+                    help="Label image size")
+
 sys_arg.add_argument("--batch_size", type=int,
-                    default=2,
+                    default=5,
                     help="Batch size")
 
 sys_arg.add_argument("--lr", type=float,
