@@ -1,5 +1,6 @@
 # Neural Network Class
 
+import os
 import numpy as np
 from model import ResNet18, ResNet
 from pathlib import Path
