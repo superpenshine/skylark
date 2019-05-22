@@ -39,6 +39,9 @@ class network(object):
         self.ltl = (int(0.5 * (self.input_size[0] - self.label_size[0])), int(0.5 * (self.input_size[1] - self.label_size[1])))
         self.lbr = (self.ltl[0] + self.label_size[0], self.ltl[1] + self.label_size[1])
 
+        # Global step
+        self.step = 0
+
 
     def load_writer(self):
         '''
@@ -131,6 +134,9 @@ class network(object):
             train_loss += loss.item()
             total += self.batch_size
             print(total, loss.item())
+            if self.step % 5 == 0:
+                self.writer.add_scalar('Train/Loss', loss.item(), self.step)
+            self.step += 1
 
         return train_loss
 
@@ -144,6 +150,7 @@ class network(object):
         self.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
         epoch = checkpoint['epoch']
         accuracy = checkpoint['accuracy']
+        self.step = checkpoint['step']
 
         return accuracy, epoch
 
@@ -154,6 +161,7 @@ class network(object):
         '''
         torch.save({
             'epoch': epoch,
+            'step': self.step,
             'accuracy': accuracy, 
             'model_state_dict': self.model.state_dict(),
             'optimizer_state_dict': self.optimizer.state_dict()
@@ -185,7 +193,6 @@ class network(object):
         self.load_writer()
         self.load_data()
         self.load_model()
-        exit(1)
         accuracy = 0
         start_epoch = 1
 
@@ -198,7 +205,7 @@ class network(object):
             self.scheduler.step(epoch)
             print("\n===> epoch: {}/{}".format(epoch, self.epochs))
             train_result = self.train()
-            print(train_result)
+            print("Epoch {} loss: {}".format(epoch, train_result))
             # test_result = self.test()
             # accuracy = max(accuracy, test_result[1])
             # Save checkpoint periodically

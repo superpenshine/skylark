@@ -1,7 +1,7 @@
 # main file
 
 from config import get_config, print_usage
-from network_tf import nn
+# from network_tf import nn
 from network_pt import network
 from util.data_util import *
 from dataset.Astrodata import Astrodata

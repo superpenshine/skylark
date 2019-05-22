@@ -20,7 +20,8 @@ sys_arg = add_argument_group("Data")
 
 # Params you want to change for local system uses
 sys_arg.add_argument("--data_dir", type=Path,
-                    default='D:/sigma_data',
+                    # default='D:/sigma_data',
+                    default='/home/sht/data/sigma_data', 
                     help="Directory to data folder")
 
 sys_arg.add_argument("--f_gird", type=Path,
