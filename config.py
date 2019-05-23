@@ -29,9 +29,9 @@ sys_arg.add_argument("--f_gird", type=Path,
                     help="log grid file name")
 
 sys_arg.add_argument("--h5_dir", type=Path,
-                    default='D:/sigma_data/data.h5',
+                    default='D:/sigma_data/data',
                     # default='/home/sht/data/sigma_data/data', 
-                    help="Suffix of data file name without the .5 extension")
+                    help="Data file name without the .5 extension")
 
 sys_arg.add_argument("--log_dir", type=Path,
                     default='./tmp',

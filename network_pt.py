@@ -24,7 +24,7 @@ class network(object):
         self.checkpoint = "checkpoint.tar"
         self.model_dir = "model.pth"
         self.log_dir = config.log_dir
-        self.data_dir = config.h5_dir
+        self.data_dir = str(config.h5_dir)
         self.valid_size = config.valid_size
         self.min_step_diff = config.min_step_diff
         self.max_step_diff = config.max_step_diff
@@ -39,6 +39,9 @@ class network(object):
         # Sizes to crop the input img
         self.ltl = (int(0.5 * (self.input_size[0] - self.label_size[0])), int(0.5 * (self.input_size[1] - self.label_size[1])))
         self.lbr = (self.ltl[0] + self.label_size[0], self.ltl[1] + self.label_size[1])
+
+        self.tr_data_dir = Path(self.data_dir + "_tr.h5")
+        self.va_data_dir = Path(self.data_dir + "_va.h5")
 
         # Global step
         self.step = 0
@@ -64,14 +67,14 @@ class network(object):
                  # transforms.RandomCrop(128, 128), # won't work since we want random crop at the same posion of the three images
                  transforms.ToTensor()]
 
-        data_tr = Astrodata(self.data_dir, 
+        data_tr = Astrodata(self.tr_data_dir, 
                             min_step_diff = self.min_step_diff, 
                             max_step_diff = self.max_step_diff, 
                             rtn_log_grid = False, 
                             transforms = trans, 
                             group_trans_id = [2]) # RandomCrop is group op
 
-        data_va = Astrodata(self.data_dir, 
+        data_va = Astrodata(self.va_data_dir, 
                             min_step_diff = self.min_step_diff, 
                             max_step_diff = self.max_step_diff, 
                             rtn_log_grid = False, 
@@ -88,11 +91,11 @@ class network(object):
 
         self.train_loader = DataLoader(data_tr, 
                                        batch_size = self.batch_size, 
-                                       sampler = train_sampler, 
+                                       # sampler = train_sampler, 
                                        shuffle = True)
         self.valid_loader = DataLoader(data_va, 
                                        batch_size = self.batch_size, 
-                                       sampler = valid_sampler, 
+                                       # sampler = valid_sampler, 
                                        shuffle = True)
 
 
@@ -143,9 +146,15 @@ class network(object):
             train_loss += loss.item()
             total += self.batch_size
             print(total, loss.item())
+
             if self.step % 5 == 0:
+                valid_result = self.valid()
+                self.model.train()
                 self.writer.add_scalar('Train/Loss', loss.item(), self.step)
+                self.writer.add_scalar('Valid/Loss', valid_result, self.step)
             self.step += 1
+            if self.step == 40:
+                exit(1)
 
         return train_loss
 
@@ -166,7 +175,7 @@ class network(object):
                 # Concatenate two input imgs in NCHW format
                 duo = torch.cat([i0, i1], dim=1)
                 duo, label, i1_crop = duo.to(self.device), label.to(self.device), i1_crop.to(self.device)
-                output = self.model(data)
+                output = self.model(duo)
                 # Avg per img loss: Err = f(I0,I1) + I1 - I0.5
                 # import pdb
                 # pdb.set_trace()
@@ -174,9 +183,8 @@ class network(object):
                 valid_loss += loss.item()
                 total += self.batch_size
                 print(total, loss.item())
-                if self.step % 5 == 0:
-                    self.writer.add_scalar('Valid/Loss', loss.item(), self.step)
-                self.step += 1
+                if b_id == 5:
+                    return valid_loss
 
         return valid_loss
 
@@ -246,7 +254,6 @@ class network(object):
             print("\n===> epoch: {}/{}".format(epoch, self.epochs))
             train_result = self.train()
             print("Epoch {} loss: {}".format(epoch, train_result))
-            valid_result = self.valid()
             accuracy = max(accuracy, valid_result[1])
             # test_result = self.test()
             # accuracy = max(accuracy, test_result[1])

@@ -69,6 +69,7 @@ class Astrodata(Dataset):
 
 
     def __len__(self):
+        # Total number of triplets: 0.25n^2-0.25n-int(0.5n)0.5
         return sum(self.d_bounds)
 
 
