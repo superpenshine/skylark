@@ -20,8 +20,8 @@ sys_arg = add_argument_group("Data")
 
 # Params you want to change for local system uses
 sys_arg.add_argument("--data_dir", type=Path,
-                    default='D:/sigma_data',
-                    # default='/home/sht/data/sigma_data',
+                    # default='D:/sigma_data',
+                    default='/home/sht/data/sigma_data',
                     help="Directory to data folder")
 
 sys_arg.add_argument("--f_gird", type=Path,
@@ -29,8 +29,8 @@ sys_arg.add_argument("--f_gird", type=Path,
                     help="log grid file name")
 
 sys_arg.add_argument("--h5_dir", type=Path,
-                    default='D:/sigma_data/data',
-                    # default='/home/sht/data/sigma_data/data', 
+                    # default='D:/sigma_data/data',
+                    default='/home/sht/data/sigma_data/data', 
                     help="Data file name without the .5 extension")
 
 sys_arg.add_argument("--log_dir", type=Path,

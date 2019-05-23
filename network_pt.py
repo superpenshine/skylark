@@ -123,7 +123,7 @@ class network(object):
         train_loss: total train loss
         total: total number of inputs trained
         '''
-        print("train:")
+        print("\ntrain:")
         self.model.train()
         train_loss = 0
         total = 0
@@ -153,8 +153,8 @@ class network(object):
                 self.writer.add_scalar('Train/Loss', loss.item(), self.step)
                 self.writer.add_scalar('Valid/Loss', valid_result, self.step)
             self.step += 1
-            if self.step == 40:
-                exit(1)
+            # if self.step == 40:
+            #     exit(1)
 
         return train_loss
 
@@ -163,7 +163,7 @@ class network(object):
         '''
         Test the accuracy of the current model parameters
         '''
-        print("valid:")
+        print("\nvalid:")
         self.model.eval()
         valid_loss = 0
         total = 0
@@ -183,8 +183,8 @@ class network(object):
                 valid_loss += loss.item()
                 total += self.batch_size
                 print(total, loss.item())
-                if b_id == 5:
-                    return valid_loss
+                # if b_id == 5:
+                #     return valid_loss
 
         return valid_loss
 
