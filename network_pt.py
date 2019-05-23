@@ -212,7 +212,7 @@ class network(object):
             # Save checkpoint periodically
             if epoch % self.checkpoint_freq == 0:
                 self.save_checkpoint(accuracy, epoch)
-            break
+
         print("===> BEST ACC. PERFORMANCE: %.3f%%" % (accuracy * 100))
         self.save()
         # Remove the checkpoint when training finished and the model is saved
