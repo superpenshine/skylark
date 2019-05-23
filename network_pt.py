@@ -64,27 +64,36 @@ class network(object):
                  # transforms.RandomCrop(128, 128), # won't work since we want random crop at the same posion of the three images
                  transforms.ToTensor()]
 
-        data = Astrodata(self.data_dir, 
-                         min_step_diff = self.min_step_diff, 
-                         max_step_diff = self.max_step_diff, 
-                         rtn_log_grid = False, 
-                         transforms = trans, 
-                         group_trans_id = [2]) # RandomCrop is group op
+        data_tr = Astrodata(self.data_dir, 
+                            min_step_diff = self.min_step_diff, 
+                            max_step_diff = self.max_step_diff, 
+                            rtn_log_grid = False, 
+                            transforms = trans, 
+                            group_trans_id = [2]) # RandomCrop is group op
 
-        np.random.seed(1234)
-        indices = list(range(len(data)))
-        np.random.shuffle(indices)
-        split = int(len(data) * self.valid_size)
-        train, valid = indices[:split], indices[split:]
-        train_sampler = SubsetRandomSampler(train)
-        valid_sampler = SubsetRandomSampler(valid)
+        data_va = Astrodata(self.data_dir, 
+                            min_step_diff = self.min_step_diff, 
+                            max_step_diff = self.max_step_diff, 
+                            rtn_log_grid = False, 
+                            transforms = trans, 
+                            group_trans_id = [2]) # RandomCrop is group op
 
-        self.train_loader = DataLoader(data, 
+        # np.random.seed(1234)
+        # indices = list(range(len(data)))
+        # np.random.shuffle(indices)
+        # split = int(len(data) * (1 - self.valid_size))
+        # train, valid = indices[:split], indices[split:]
+        # train_sampler = SubsetRandomSampler(train)
+        # valid_sampler = SubsetRandomSampler(valid)
+
+        self.train_loader = DataLoader(data_tr, 
                                        batch_size = self.batch_size, 
-                                       sampler = train_sampler)
-        self.valid_loader = DataLoader(data, 
+                                       sampler = train_sampler, 
+                                       shuffle = True)
+        self.valid_loader = DataLoader(data_va, 
                                        batch_size = self.batch_size, 
-                                       sampler = valid_sampler)
+                                       sampler = valid_sampler, 
+                                       shuffle = True)
 
 
     def load_model(self):
@@ -114,7 +123,6 @@ class network(object):
         print("train:")
         self.model.train()
         train_loss = 0
-        train_correct = 0
         total = 0
 
         for b_id, (i0, i1, label) in enumerate(self.train_loader):
@@ -140,6 +148,37 @@ class network(object):
             self.step += 1
 
         return train_loss
+
+
+    def valid(self):
+        '''
+        Test the accuracy of the current model parameters
+        '''
+        print("valid:")
+        self.model.eval()
+        valid_loss = 0
+        total = 0
+
+        with torch.no_grad():
+            for b_id, (i0, i1, label) in enumerate(self.valid_loader):
+                # Only cut i1 for err calc
+                i1_crop = i1[:,:,self.ltl[0]:self.lbr[0],self.ltl[1]:self.lbr[1]]
+                # Concatenate two input imgs in NCHW format
+                duo = torch.cat([i0, i1], dim=1)
+                duo, label, i1_crop = duo.to(self.device), label.to(self.device), i1_crop.to(self.device)
+                output = self.model(data)
+                # Avg per img loss: Err = f(I0,I1) + I1 - I0.5
+                # import pdb
+                # pdb.set_trace()
+                loss = self.criterion(output + i1_crop, label)
+                valid_loss += loss.item()
+                total += self.batch_size
+                print(total, loss.item())
+                if self.step % 5 == 0:
+                    self.writer.add_scalar('Valid/Loss', loss.item(), self.step)
+                self.step += 1
+
+        return valid_loss
 
 
     def load_checkpoint(self):
@@ -207,6 +246,8 @@ class network(object):
             print("\n===> epoch: {}/{}".format(epoch, self.epochs))
             train_result = self.train()
             print("Epoch {} loss: {}".format(epoch, train_result))
+            valid_result = self.valid()
+            accuracy = max(accuracy, valid_result[1])
             # test_result = self.test()
             # accuracy = max(accuracy, test_result[1])
             # Save checkpoint periodically

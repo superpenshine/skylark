@@ -26,10 +26,11 @@ def get_ny(data, log_grid, nvar):
     return int(div)
 
 
-def save_to_h5(config, raw_data = True, polar = False):
+def save_to_h5(config, polar = False, trva=None):
     '''
     Save data to one huge .h5 file of structure:
         dataset: [n_disk, n_steps, nx, ny, nvar]
+    trva: split to train/valid data or not
 
     nvar: [nx, ny, 0] -- gas
           [nx, ny, 1] -- dust for size 0.01cm
@@ -39,7 +40,11 @@ def save_to_h5(config, raw_data = True, polar = False):
     nvar = config.nvar
     ndisc = 1 #config.ndisc
     file_pattern = config.pattern
-    h5_fout = h5py.File(config.h5_dir)
+    if trva:
+        out_tr = h5py.File(Path(str(config.h5_dir) + "_tr.h5"))
+        out_va = h5py.File(Path(str(config.h5_dir) + "_va.h5"))
+    else:
+        h5_fout = h5py.File(config.h5_dir.with_suffix('.h5'))
 
     # d_set = h5_fout.create_dataset(
     #     'data', 
@@ -58,18 +63,43 @@ def save_to_h5(config, raw_data = True, polar = False):
 
         nx = log_grid.shape[0]
 
-        disk_grp = h5_fout.create_group(fo_name)
-        disk_grp["log_grid"] = log_grid
+        if trva:
+            disk_grp_tr = out_tr.create_group(fo_name)
+            disk_grp_va = out_va.create_group(fo_name)
+            disk_grp_tr["log_grid"] = log_grid
+            disk_grp_va["log_grid"] = log_grid
+        else:
+            disk_grp = h5_fout.create_group(fo_name)
+            disk_grp["log_grid"] = log_grid
 
-        for j, f in enumerate(f_names):
-            print(j)
-            data = np.fromfile(f.open('rb'), dtype=np.float32)
-            ny = get_ny(data, log_grid, nvar)
-            data = np.reshape(data, (nx, ny, nvar))
+        # Split data(Should avoid code duplication)
+        if trva:
+            f_len = len(f_names)
+            split = int(f_len * (1 - config.valid_size))
+            f_names_tr = f_names[:split]
+            f_names_va = f_names[split:]
+            
+            # Record to tr/va file
+            for j, f in enumerate(f_names_tr):
+                print("tr", j)
+                data = np.fromfile(f.open('rb'), dtype=np.float32)
+                ny = get_ny(data, log_grid, nvar)
+                data = np.reshape(data, (nx, ny, nvar))
+                disk_grp_tr[str(j)] = data
 
-            if raw_data:
+            for j, f in enumerate(f_names_va):
+                print("va", j)
+                data = np.fromfile(f.open('rb'), dtype=np.float32)
+                ny = get_ny(data, log_grid, nvar)
+                data = np.reshape(data, (nx, ny, nvar))
+                disk_grp_va[str(j)] = data
+        else:
+            for j, f in enumerate(f_names):
+                print(j)
+                data = np.fromfile(f.open('rb'), dtype=np.float32)
+                ny = get_ny(data, log_grid, nvar)
+                data = np.reshape(data, (nx, ny, nvar))
                 disk_grp[str(j)] = data
-                continue
 
 
 def load(dir, disk, step, retrun_gird = True):

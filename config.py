@@ -20,8 +20,8 @@ sys_arg = add_argument_group("Data")
 
 # Params you want to change for local system uses
 sys_arg.add_argument("--data_dir", type=Path,
-                    # default='D:/sigma_data',
-                    default='/home/sht/data/sigma_data',
+                    default='D:/sigma_data',
+                    # default='/home/sht/data/sigma_data',
                     help="Directory to data folder")
 
 sys_arg.add_argument("--f_gird", type=Path,
@@ -29,9 +29,9 @@ sys_arg.add_argument("--f_gird", type=Path,
                     help="log grid file name")
 
 sys_arg.add_argument("--h5_dir", type=Path,
-                    # default='D:/sigma_data/data.h5',
-                    default='/home/sht/data/sigma_data/data.h5', 
-                    help="Suffix of data file name")
+                    default='D:/sigma_data/data.h5',
+                    # default='/home/sht/data/sigma_data/data', 
+                    help="Suffix of data file name without the .5 extension")
 
 sys_arg.add_argument("--log_dir", type=Path,
                     default='./tmp',
@@ -46,7 +46,7 @@ sys_arg.add_argument("--nvar", type=int,
                     help="nvar number")
 
 sys_arg.add_argument("--valid_size", type=float,
-                    default=0.8,
+                    default=0.2,
                     help="Validation sample percentage (<=1.0)")
 
 sys_arg.add_argument("--min_step_diff", type=int,
