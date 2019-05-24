@@ -1,5 +1,6 @@
 # Custom transform class for pytorch dataloader
 
+import torch
 import numpy as np
 from PIL import Image
 
@@ -68,6 +69,17 @@ class CustomPad(object):
             return Image.fromarray(img)
 
         return img
+
+
+class ToTensor(object):
+    '''
+    Convet numpy array to tensor
+    '''
+    def __call__(self, img):
+        if not isinstance(img, np.ndarray):
+            raise TypeError("Custom ToTensor takes numpy array as input")
+
+        return torch.from_numpy(img)
 
 
 class GroupRandomCrop(object):

@@ -4,7 +4,7 @@ import os
 import numpy as np
 from model import ResNet18, ResNet
 from pathlib import Path
-from util.transform import CustomPad, GroupRandomCrop
+from util.transform import CustomPad, GroupRandomCrop, ToTensor
 from dataset.Astrodata import Astrodata
 
 import torch
@@ -61,11 +61,13 @@ class network(object):
         trans = [CustomPad((0, int((self.input_size[1]-1)*0.5), 0, int((self.input_size[1]-1)*0.5)), 'circular'), 
                  CustomPad((int((self.input_size[0]-1)*0.5), 0, int((self.input_size[0]-1)*0.5), 0), 'zero', constant_values=0), 
                  GroupRandomCrop(self.input_size, label_size=self.label_size), 
-                 transforms.ToPILImage(), 
+                 ToTensor()
+                 # transforms.ToPILImage(), 
                  # transforms.Resize((128, 128)), # Using RandomCrop now
                  # transforms.Pad((64, 0, 64, 0), 'constant'), # only supports RGB
                  # transforms.RandomCrop(128, 128), # won't work since we want random crop at the same posion of the three images
-                 transforms.ToTensor()]
+                 # transforms.ToTensor()
+                 ]
 
         data_tr = Astrodata(self.tr_data_dir, 
                             min_step_diff = self.min_step_diff, 
@@ -80,7 +82,6 @@ class network(object):
                             rtn_log_grid = False, 
                             transforms = trans, 
                             group_trans_id = [2]) # RandomCrop is group op
-
         # np.random.seed(1234)
         # indices = list(range(len(data)))
         # np.random.shuffle(indices)
@@ -129,6 +130,8 @@ class network(object):
         total = 0
 
         for b_id, (i0, i1, label) in enumerate(self.train_loader):
+            # # Convert to tensor
+            # i0, i1, label, i1_crop = torch.from_numpy()
             # Only cut i1 for err calc
             i1_crop = i1[:,:,self.ltl[0]:self.lbr[0],self.ltl[1]:self.lbr[1]]
             # Concatenate two input imgs in NCHW format
@@ -138,8 +141,6 @@ class network(object):
             output = self.model(duo)
 
             # Avg per img loss: Err = f(I0,I1) + I1 - I0.5
-            # import pdb
-            # pdb.set_trace()
             loss = self.criterion(output + i1_crop, label)
             loss.backward()
             self.optimizer.step()
@@ -176,9 +177,8 @@ class network(object):
                 duo = torch.cat([i0, i1], dim=1)
                 duo, label, i1_crop = duo.to(self.device), label.to(self.device), i1_crop.to(self.device)
                 output = self.model(duo)
-                # Avg per img loss: Err = f(I0,I1) + I1 - I0.5
-                # import pdb
-                # pdb.set_trace()
+                # Err = f(I0,I1) + I1 - I0.5
+                # L1 Loss
                 loss = self.criterion(output + i1_crop, label)
                 valid_loss += loss.item()
                 total += self.batch_size

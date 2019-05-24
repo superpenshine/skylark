@@ -60,7 +60,7 @@ class Astrodata(Dataset):
                 l = transform(l)
                 h = transform(h)
                 m = transform(m)
-
+                
         if self.rtn_log_grid:
             log_grid = np.asarray(self.data[d]["log_grid"])
             return log_grid, l, h, m
@@ -83,7 +83,8 @@ class Astrodata(Dataset):
             c_max = np.amax(ndarray[:,:,c_i])
             ndarray[:,:,c_i] = ndarray[:,:,c_i] / c_max
 
-        return (ndarray * 255).astype(np.uint8)
+        # return (ndarray * 255).astype(np.uint8)
+        return ndarray
 
 
 
