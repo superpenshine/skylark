@@ -254,7 +254,7 @@ class network(object):
             print("\n===> epoch: {}/{}".format(epoch, self.epochs))
             train_result = self.train()
             print("Epoch {} loss: {}".format(epoch, train_result))
-            accuracy = max(accuracy, valid_result[1])
+            # accuracy = max(accuracy, valid_result[1])
             # test_result = self.test()
             # accuracy = max(accuracy, test_result[1])
             # Save checkpoint periodically
