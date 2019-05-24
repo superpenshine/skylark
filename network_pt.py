@@ -275,41 +275,96 @@ class network(object):
 
 
     def test_single(self):
-        self.load_data()
+        '''
+        Test the model using single input
+        '''
+        group_trans_id = [2]
+        tran0 = CustomPad((int((self.input_size[1]-1)*0.5), 0, int((self.input_size[1]-1)*0.5), 0), 'circular')
+        tran1 = CustomPad((0, int((self.input_size[0]-1)*0.5), 0, int((self.input_size[0]-1)*0.5)), 'zero', constant_values=0),
+        tran2 = GroupRandomCrop(self.input_size, label_size=self.label_size)
+        tran3 = ToTensor()
+        var = 1
+
+        data_tr = Astrodata(self.tr_data_dir, 
+                            min_step_diff = self.min_step_diff, 
+                            max_step_diff = self.max_step_diff, 
+                            rtn_log_grid = False) # RandomCrop is group op
+
+        data_va = Astrodata(self.va_data_dir, 
+                            min_step_diff = self.min_step_diff, 
+                            max_step_diff = self.max_step_diff, 
+                            rtn_log_grid = False) # RandomCrop is group op
+
+        # Normalized triplet without transform
+        i0, i1, label = data_tr[56]
+        plt.subplot(6, 3, 1)
+        plt.imshow(i0)
+        plt.subplot(6, 3, 2)
+        plt.imshow(label)
+        plt.subplot(6, 3, 3)
+        plt.imshow(i1)
+
+        i0, i1, label = tran0(i0), tran0(i1), tran0(label)
+        i0, i1, label = tran1(i0), tran1(i1), tran1(label)
+        plt.subplot(6, 3, 4)
+        plt.imshow(i0)
+        plt.subplot(6, 3, 5)
+        plt.imshow(label)
+        plt.subplot(6, 3, 6)
+        plt.imshow(i1)
+
+        i0, i1, label = tran2(i0, i1, label)
+        plt.subplot(6, 3, 7)
+        plt.imshow(i0)
+        plt.subplot(6, 3, 8)
+        plt.imshow(label)
+        plt.subplot(6, 3, 9)
+        plt.imshow(i1)
+
+        i0, i1, label = tran3(i0), tran3(i1), tran3(label)
+
         device = torch.device('cpu')
         self.load(map_location=device)
         self.model.eval()
         with torch.no_grad():
-            for b_id, (i0, i1, label) in enumerate(self.valid_loader):
-                i1_crop = i1[:,:,self.ltl[0]:self.lbr[0],self.ltl[1]:self.lbr[1]]
-                duo = torch.cat([i0, i1], dim=1)
-                # duo, label, i1_crop = duo.to(self.device), label.to(self.device), i1_crop.to(self.device)
-                output = self.model(duo)
-                print(output)
-                out = output + i1_crop
-                break
+            # i0, i1, label = self.data_tr[0]
+            i1_crop = i1[:,self.ltl[0]:self.lbr[0],self.ltl[1]:self.lbr[1]]
+            duo = [torch.cat([i0, i1], dim=0)]
+            output = self.model(duo)
+            print(output)
+            out = output[0] + i1_crop
+            residue = plt.imabsdiff(out, label)
+
+            # for b_id, (i0, i1, label) in enumerate(self.valid_loader):
+            #     i1_crop = i1[:,:,self.ltl[0]:self.lbr[0],self.ltl[1]:self.lbr[1]]
+            #     duo = torch.cat([i0, i1], dim=1)
+            #     # duo, label, i1_crop = duo.to(self.device), label.to(self.device), i1_crop.to(self.device)
+            #     output = self.model(duo)
+            #     print(output)
+            #     out = output + i1_crop
+            #     break
 
         # i0, out, i1_crop, label = i0[0].cpu(), out[0].cpu(), i1_crop[0].cpu(), label[0].cpu()
-        i0, out, i1_crop, label = i0[0], out[0], i1_crop[0], label[0]
+        # i0, out, i1_crop, label = i0[0], out[0], i1_crop[0], label[0]
 
-        i0 = i0[1]
-        plt.subplot(3, 2, 1)
-        plt.imshow(i0)
-        plt.subplot(3, 2, 2)
-        plt.imshow(i0)
+        # i0 = i0[var]
+        # plt.subplot(3, 2, 1)
+        # plt.imshow(i0)
+        # plt.subplot(3, 2, 2)
+        # plt.imshow(i0)
 
-        out = out[1]
-        plt.subplot(3, 2, 3)
+        out = out[var]
+        plt.subplot(6, 3, 17)
         plt.imshow(out)
 
-        label = label[1]
-        plt.subplot(3, 2, 4)
-        plt.imshow(label)
+        # label = label[var]
+        # plt.subplot(3, 2, 4)
+        # plt.imshow(label)
 
-        i1_crop = i1_crop[1]
-        plt.subplot(3, 2, 5)
-        plt.imshow(i1_crop)
-        plt.subplot(3, 2, 6)
-        plt.imshow(i1_crop)
+        # i1_crop = i1_crop[var]
+        # plt.subplot(3, 2, 5)
+        # plt.imshow(i1_crop)
+        # plt.subplot(3, 2, 6)
+        # plt.imshow(i1_crop)
 
         plt.show()
