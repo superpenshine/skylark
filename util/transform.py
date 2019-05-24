@@ -79,7 +79,7 @@ class ToTensor(object):
         if not isinstance(img, np.ndarray):
             raise TypeError("Custom ToTensor takes numpy array as input")
 
-        return torch.from_numpy(img)
+        return torch.from_numpy(np.transpose(img, (2, 0, 1)))
 
 
 class GroupRandomCrop(object):
