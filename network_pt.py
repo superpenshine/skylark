@@ -280,7 +280,7 @@ class network(object):
         self.load()
         self.model.eval()
         with torch.no_grad():
-            for b_id, (i0, i1, label) in enumerate(self.train_loader):
+            for b_id, (i0, i1, label) in enumerate(self.valid_loader):
                 i1_crop = i1[:,:,self.ltl[0]:self.lbr[0],self.ltl[1]:self.lbr[1]]
                 duo = torch.cat([i0, i1], dim=1)
                 duo, label, i1_crop = duo.to(self.device), label.to(self.device), i1_crop.to(self.device)
