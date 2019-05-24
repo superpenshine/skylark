@@ -2,6 +2,7 @@
 
 import os
 import numpy as np
+import matplotlib.pyplot as plt
 from model import ResNet18, ResNet
 from pathlib import Path
 from util.transform import CustomPad, GroupRandomCrop, ToTensor
@@ -58,8 +59,10 @@ class network(object):
         '''
         Prepare train/test data
         '''
-        trans = [CustomPad((0, int((self.input_size[1]-1)*0.5), 0, int((self.input_size[1]-1)*0.5)), 'circular'), 
-                 CustomPad((int((self.input_size[0]-1)*0.5), 0, int((self.input_size[0]-1)*0.5), 0), 'zero', constant_values=0), 
+        trans = [CustomPad((int((self.input_size[1]-1)*0.5), 0, int((self.input_size[1]-1)*0.5), 0), 'circular'), 
+                 CustomPad((0, int((self.input_size[0]-1)*0.5), 0, int((self.input_size[0]-1)*0.5)), 'zero', constant_values=0), 
+                 # CustomPad((0, int((self.input_size[1]-1)*0.5), 0, int((self.input_size[1]-1)*0.5)), 'circular'), 
+                 # CustomPad((int((self.input_size[0]-1)*0.5), 0, int((self.input_size[0]-1)*0.5), 0), 'zero', constant_values=0), 
                  GroupRandomCrop(self.input_size, label_size=self.label_size), 
                  ToTensor()
                  # transforms.ToPILImage(), 
@@ -69,14 +72,14 @@ class network(object):
                  # transforms.ToTensor()
                  ]
 
-        data_tr = Astrodata(self.tr_data_dir, 
+        self.data_tr = Astrodata(self.tr_data_dir, 
                             min_step_diff = self.min_step_diff, 
                             max_step_diff = self.max_step_diff, 
                             rtn_log_grid = False, 
                             transforms = trans, 
                             group_trans_id = [2]) # RandomCrop is group op
 
-        data_va = Astrodata(self.va_data_dir, 
+        self.data_va = Astrodata(self.va_data_dir, 
                             min_step_diff = self.min_step_diff, 
                             max_step_diff = self.max_step_diff, 
                             rtn_log_grid = False, 
@@ -90,11 +93,11 @@ class network(object):
         # train_sampler = SubsetRandomSampler(train)
         # valid_sampler = SubsetRandomSampler(valid)
 
-        self.train_loader = DataLoader(data_tr, 
+        self.train_loader = DataLoader(self.data_tr, 
                                        batch_size = self.batch_size, 
                                        # sampler = train_sampler, 
                                        shuffle = True)
-        self.valid_loader = DataLoader(data_va, 
+        self.valid_loader = DataLoader(self.data_va, 
                                        batch_size = self.batch_size, 
                                        # sampler = valid_sampler, 
                                        shuffle = True)
@@ -110,8 +113,6 @@ class network(object):
         else:
             self.device = torch.device('cpu')
 
-        sample_input=(torch.rand(1, 8, self.input_size[0], self.input_size[1])) # To trace the flow sizes
-        self.writer.add_graph(model = ResNet(), input_to_model=sample_input)
         self.model = ResNet().to(self.device)
         self.optimizer = optim.Adam(self.model.parameters(), lr=self.lr)
         self.scheduler = optim.lr_scheduler.MultiStepLR(self.optimizer, milestones=[75, 150], gamma=0.5)
@@ -241,6 +242,10 @@ class network(object):
         self.load_writer()
         self.load_data()
         self.load_model()
+
+        sample_input=(torch.rand(1, 8, self.input_size[0], self.input_size[1])) # To trace the flow sizes
+        self.writer.add_graph(model = ResNet(), input_to_model=sample_input)
+
         accuracy = 0
         start_epoch = 1
 
@@ -267,3 +272,43 @@ class network(object):
         print("Checkpoint removed upon training complete")
         if os.path.exists(self.checkpoint):
             os.remove(self.checkpoint)
+
+
+    def test_single(self):
+        self.load_data()
+        self.load_model()
+        self.load()
+        self.model.eval()
+        with torch.no_grad():
+            for b_id, (i0, i1, label) in enumerate(self.train_loader):
+                i1_crop = i1[:,:,self.ltl[0]:self.lbr[0],self.ltl[1]:self.lbr[1]]
+                duo = torch.cat([i0, i1], dim=1)
+                duo, label, i1_crop = duo.to(self.device), label.to(self.device), i1_crop.to(self.device)
+                output = self.model(duo)
+                print(output)
+                out = output + i1_crop
+                break
+
+        i0, out, i1_crop, label = i0[0].cpu(), out[0].cpu(), i1_crop[0].cpu(), label[0].cpu()
+
+        i0 = i0[1]
+        plt.subplot(3, 2, 1)
+        plt.imshow(i0)
+        plt.subplot(3, 2, 2)
+        plt.imshow(i0)
+
+        out = out[1]
+        plt.subplot(3, 2, 3)
+        plt.imshow(out)
+
+        label = label[1]
+        plt.subplot(3, 2, 4)
+        plt.imshow(label)
+
+        i1_crop = i1_crop[1]
+        plt.subplot(3, 2, 5)
+        plt.imshow(i1_crop)
+        plt.subplot(3, 2, 6)
+        plt.imshow(i1_crop)
+
+        plt.show()

@@ -60,7 +60,7 @@ class Astrodata(Dataset):
                 l = transform(l)
                 h = transform(h)
                 m = transform(m)
-                
+
         if self.rtn_log_grid:
             log_grid = np.asarray(self.data[d]["log_grid"])
             return log_grid, l, h, m
@@ -189,7 +189,7 @@ class Astrodata(Dataset):
                 raise ValueError("Min_step_diff must be an even number.")
 
             if self.min_step_diff > max(self.max_valid_step_diffs):
-                raise ValieError("Min_step_diff should be less or equal to {}".format(max(elf.max_valid_step_diffs)))
+                raise ValueError("Min_step_diff should be less or equal to {}".format(max(self.max_valid_step_diffs)))
 
         if self.max_step_diff:
             if self.max_step_diff % 2 != 0:
