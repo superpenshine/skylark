@@ -218,11 +218,11 @@ class network(object):
         print("Checkpoint saved")
 
 
-    def load(self):
+    def load(self, **kwargs):
         '''
         Load pretrained model
         '''
-        torch.load(self.model_dir)
+        self.model = torch.load(self.model_dir, **kwargs)
         print("Model loaded from  {}".format(self.model_dir))
 
 
@@ -276,20 +276,21 @@ class network(object):
 
     def test_single(self):
         self.load_data()
-        self.load_model()
-        self.load()
+        device = torch.device('cpu')
+        self.load(map_location=device)
         self.model.eval()
         with torch.no_grad():
             for b_id, (i0, i1, label) in enumerate(self.valid_loader):
                 i1_crop = i1[:,:,self.ltl[0]:self.lbr[0],self.ltl[1]:self.lbr[1]]
                 duo = torch.cat([i0, i1], dim=1)
-                duo, label, i1_crop = duo.to(self.device), label.to(self.device), i1_crop.to(self.device)
+                # duo, label, i1_crop = duo.to(self.device), label.to(self.device), i1_crop.to(self.device)
                 output = self.model(duo)
                 print(output)
                 out = output + i1_crop
                 break
 
-        i0, out, i1_crop, label = i0[0].cpu(), out[0].cpu(), i1_crop[0].cpu(), label[0].cpu()
+        # i0, out, i1_crop, label = i0[0].cpu(), out[0].cpu(), i1_crop[0].cpu(), label[0].cpu()
+        i0, out, i1_crop, label = i0[0], out[0], i1_crop[0], label[0]
 
         i0 = i0[1]
         plt.subplot(3, 2, 1)

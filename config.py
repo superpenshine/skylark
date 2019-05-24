@@ -20,13 +20,13 @@ sys_arg = add_argument_group("Data")
 
 # Params you want to change for local system uses
 sys_arg.add_argument("--data_dir", type=Path,
-                    # default='D:/sigma_data',
-                    default='/home/sht/data/sigma_data',
+                    default='D:/sigma_data',
+                    # default='/home/sht/data/sigma_data',
                     help="Directory to data folder")
 
 sys_arg.add_argument("--h5_dir", type=Path,
-                    # default='D:/sigma_data/data',
-                    default='/home/sht/data/sigma_data/data', 
+                    default='D:/sigma_data/data',
+                    # default='/home/sht/data/sigma_data/data', 
                     help="Data file name without the .5 extension")
 
 sys_arg.add_argument("--f_gird", type=Path,
@@ -50,7 +50,7 @@ sys_arg.add_argument("--valid_size", type=float,
                     help="Validation sample percentage (<=1.0)")
 
 sys_arg.add_argument("--min_step_diff", type=int,
-                    default=None,
+                    default=20,
                     help="None or an integer indicating min step difference")
 
 sys_arg.add_argument("--max_step_diff", type=int,

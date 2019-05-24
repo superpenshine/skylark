@@ -70,8 +70,8 @@ def main():
     #     break
 
     solver = network(config)
-    solver.run()
-    # solver.test_single()
+    # solver.run()
+    solver.test_single()
 
 
 if __name__ == "__main__":
