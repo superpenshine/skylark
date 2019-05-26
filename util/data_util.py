@@ -74,10 +74,15 @@ def save_to_h5(config, polar = False, trva=None):
 
         # Split data(Should avoid code duplication)
         if trva:
+            # Assume even for train, odd for validation
             f_len = len(f_names)
-            split = int(f_len * (1 - config.valid_size))
-            f_names_tr = f_names[:split]
-            f_names_va = f_names[split:]
+            f_names_tr = list(map(f_names.__getitem__, list(range(0, f_len, 2))))
+            f_names_va = list(map(f_names.__getitem__, list(range(1, f_len, 2))))
+            
+            # Assume split data with given validation percentage
+            # split = int(f_len * (1 - config.valid_size))
+            # f_names_tr = f_names[:split]
+            # f_names_va = f_names[split:]
             
             # Record to tr/va file
             for j, f in enumerate(f_names_tr):

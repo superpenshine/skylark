@@ -1,5 +1,6 @@
 # Neural Network Class
 
+import pdb
 import os
 import numpy as np
 import matplotlib.pyplot as plt
@@ -117,18 +118,17 @@ class network(object):
         self.optimizer = optim.Adam(self.model.parameters(), lr=self.lr)
         self.scheduler = optim.lr_scheduler.MultiStepLR(self.optimizer, milestones=[75, 150], gamma=0.5)
         self.criterion = L1Loss().to(self.device)
+        # self.criterion_test = L1Loss(reduction='sum').to(self.device)
+        # self.criterion_testx = L1Loss(reduction='none').to(self.device)
 
 
     def train(self):
         '''
         Train the model
-        train_loss: total train loss
-        total: total number of inputs trained
+        epoch_loss: total train loss
         '''
         print("\ntrain:")
         self.model.train()
-        train_loss = 0
-        total = 0
 
         for b_id, (i0, i1, label) in enumerate(self.train_loader):
             # # Convert to tensor
@@ -143,11 +143,13 @@ class network(object):
 
             # Avg per img loss: Err = f(I0,I1) + I1 - I0.5
             loss = self.criterion(output + i1_crop, label)
+            # loss_test = self.criterion_test(output + i1_crop, label)
+            # loss_testx = self.criterion_testx(output + i1_crop, label)
+            # print("train")
+            # pdb.set_trace()
             loss.backward()
             self.optimizer.step()
-            train_loss += loss.item()
-            total += self.batch_size
-            print(total, loss.item())
+            print(self.step, loss.item())
 
             if self.step % 5 == 0:
                 valid_result = self.valid()
@@ -155,10 +157,6 @@ class network(object):
                 self.writer.add_scalar('Train/Loss', loss.item(), self.step)
                 self.writer.add_scalar('Valid/Loss', valid_result, self.step)
             self.step += 1
-            # if self.step == 40:
-            #     exit(1)
-
-        return train_loss
 
 
     def valid(self):
@@ -168,7 +166,7 @@ class network(object):
         print("\nvalid:")
         self.model.eval()
         valid_loss = 0
-        total = 0
+        num_batch = 0
 
         with torch.no_grad():
             for b_id, (i0, i1, label) in enumerate(self.valid_loader):
@@ -181,12 +179,15 @@ class network(object):
                 # Err = f(I0,I1) + I1 - I0.5
                 # L1 Loss
                 loss = self.criterion(output + i1_crop, label)
+                # loss_test = self.criterion_test(output + i1_crop, label)
+                # loss_testx = self.criterion_testx(output + i1_crop, label)
+                # print("valid")
+                # pdb.set_trace()
                 valid_loss += loss.item()
-                total += self.batch_size
-                print(total, loss.item())
-                # if b_id == 5:
-                #     return valid_loss
+                print("batch{}, loss: {}".format(b_id, loss.item()))
+                num_batch = b_id + 1
 
+        valid_loss /= num_batch
         return valid_loss
 
 
@@ -280,10 +281,11 @@ class network(object):
         '''
         group_trans_id = [2]
         tran0 = CustomPad((int((self.input_size[1]-1)*0.5), 0, int((self.input_size[1]-1)*0.5), 0), 'circular')
-        tran1 = CustomPad((0, int((self.input_size[0]-1)*0.5), 0, int((self.input_size[0]-1)*0.5)), 'zero', constant_values=0),
+        tran1 = CustomPad((0, int((self.input_size[0]-1)*0.5), 0, int((self.input_size[0]-1)*0.5)), 'zero', constant_values=0)
         tran2 = GroupRandomCrop(self.input_size, label_size=self.label_size)
         tran3 = ToTensor()
         var = 1
+        n_row = 5
 
         data_tr = Astrodata(self.tr_data_dir, 
                             min_step_diff = self.min_step_diff, 
@@ -296,75 +298,67 @@ class network(object):
                             rtn_log_grid = False) # RandomCrop is group op
 
         # Normalized triplet without transform
-        i0, i1, label = data_tr[56]
-        plt.subplot(6, 3, 1)
-        plt.imshow(i0)
-        plt.subplot(6, 3, 2)
-        plt.imshow(label)
-        plt.subplot(6, 3, 3)
-        plt.imshow(i1)
+        i0, i1, label = data_tr[np.random.randint(0, len(data_tr)-1)]
+        plt.subplot(n_row, 3, 1, label='i0_raw')
+        plt.imshow(i0[:,:,var], vmin=0, vmax=1)
+        plt.subplot(n_row, 3, 2, label='i1_raw')
+        plt.imshow(label[:,:,var], vmin=0, vmax=1)
+        plt.subplot(n_row, 3, 3, label='i2_raw')
+        plt.imshow(i1[:,:,var], vmin=0, vmax=1)
 
-        i0, i1, label = tran0(i0), tran0(i1), tran0(label)
-        i0, i1, label = tran1(i0), tran1(i1), tran1(label)
-        plt.subplot(6, 3, 4)
-        plt.imshow(i0)
-        plt.subplot(6, 3, 5)
-        plt.imshow(label)
-        plt.subplot(6, 3, 6)
-        plt.imshow(i1)
+        i0 = tran0(i0)
+        i1 = tran0(i1)
+        label = tran0(label)
+
+        i0 = tran1(i0)
+        i1 = tran1(i1)
+        label = tran1(label)
+        plt.subplot(n_row, 3, 4, label='i0_pad')
+        plt.imshow(i0[:,:,var], vmin=0, vmax=1)
+        plt.subplot(n_row, 3, 5, label='i1_pad')
+        plt.imshow(label[:,:,var], vmin=0, vmax=1)
+        plt.subplot(n_row, 3, 6, label='i2_pad')
+        plt.imshow(i1[:,:,var], vmin=0, vmax=1)
 
         i0, i1, label = tran2(i0, i1, label)
-        plt.subplot(6, 3, 7)
-        plt.imshow(i0)
-        plt.subplot(6, 3, 8)
-        plt.imshow(label)
-        plt.subplot(6, 3, 9)
-        plt.imshow(i1)
+        plt.subplot(n_row, 3, 7, label='i0_randcrop')
+        plt.imshow(i0[:,:,var], vmin=0, vmax=1)
+        plt.subplot(n_row, 3, 8, label='i1_randcrop')
+        plt.imshow(label[:,:,var], vmin=0, vmax=1)
+        plt.subplot(n_row, 3, 9, label='i2_randcrop')
+        plt.imshow(i1[:,:,var], vmin=0, vmax=1)
 
-        i0, i1, label = tran3(i0), tran3(i1), tran3(label)
+        i0 = tran3(i0)
+        i1 = tran3(i1)
+        label = tran3(label)
 
         device = torch.device('cpu')
         self.load(map_location=device)
         self.model.eval()
         with torch.no_grad():
-            # i0, i1, label = self.data_tr[0]
             i1_crop = i1[:,self.ltl[0]:self.lbr[0],self.ltl[1]:self.lbr[1]]
-            duo = [torch.cat([i0, i1], dim=0)]
+            duo = torch.cat([i0, i1], dim=0)
+            duo = torch.unsqueeze(duo, 0)
             output = self.model(duo)
             print(output)
             out = output[0] + i1_crop
-            residue = plt.imabsdiff(out, label)
+            residue = torch.abs(out - label)
+            original_diff = torch.abs(i1_crop - label)
 
-            # for b_id, (i0, i1, label) in enumerate(self.valid_loader):
-            #     i1_crop = i1[:,:,self.ltl[0]:self.lbr[0],self.ltl[1]:self.lbr[1]]
-            #     duo = torch.cat([i0, i1], dim=1)
-            #     # duo, label, i1_crop = duo.to(self.device), label.to(self.device), i1_crop.to(self.device)
-            #     output = self.model(duo)
-            #     print(output)
-            #     out = output + i1_crop
-            #     break
-
-        # i0, out, i1_crop, label = i0[0].cpu(), out[0].cpu(), i1_crop[0].cpu(), label[0].cpu()
-        # i0, out, i1_crop, label = i0[0], out[0], i1_crop[0], label[0]
-
-        # i0 = i0[var]
-        # plt.subplot(3, 2, 1)
-        # plt.imshow(i0)
-        # plt.subplot(3, 2, 2)
-        # plt.imshow(i0)
+        residue = residue[var]
+        plt.subplot(n_row, 3, 11, label='residue')
+        plt.imshow(residue, vmin=0, vmax=1)
 
         out = out[var]
-        plt.subplot(6, 3, 17)
-        plt.imshow(out)
+        plt.subplot(n_row, 3, 14, label='out')
+        plt.imshow(out, vmin=0, vmax=1)
 
-        # label = label[var]
-        # plt.subplot(3, 2, 4)
-        # plt.imshow(label)
+        i1_crop = i1_crop[var]
+        plt.subplot(n_row, 3, 15, label='i2_crop')
+        plt.imshow(i1_crop, vmin=0, vmax=1)
 
-        # i1_crop = i1_crop[var]
-        # plt.subplot(3, 2, 5)
-        # plt.imshow(i1_crop)
-        # plt.subplot(3, 2, 6)
-        # plt.imshow(i1_crop)
 
+        original_diff = original_diff[var]
+        plt.subplot(n_row, 3, 10, label='original_diff')
+        plt.imshow(original_diff, vmin=0, vmax=1)
         plt.show()

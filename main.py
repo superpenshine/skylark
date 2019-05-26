@@ -21,7 +21,7 @@ if len(unparsed) > 0:
 
 def main():
     # preview_raw(config, 'D:/sigma_data/sigma_data0150.bin', config.data_dir / config.f_gird, polar=False, var=1)
-    # save_to_h5(config, trva=True)
+    save_to_h5(config, trva=True)
     
     # data, grid = load(config.h5_dir, "sigma_data", 150)
     # preview(data, grid, polar=False)
@@ -69,9 +69,9 @@ def main():
     #     writer.close()
     #     break
 
-    solver = network(config)
+    # solver = network(config)
     # solver.run()
-    solver.test_single()
+    # solver.test_single()
 
 
 if __name__ == "__main__":
