@@ -118,8 +118,6 @@ class network(object):
         self.optimizer = optim.Adam(self.model.parameters(), lr=self.lr)
         self.scheduler = optim.lr_scheduler.MultiStepLR(self.optimizer, milestones=[75, 150], gamma=0.5)
         self.criterion = L1Loss().to(self.device)
-        # self.criterion_test = L1Loss(reduction='sum').to(self.device)
-        # self.criterion_testx = L1Loss(reduction='none').to(self.device)
 
 
     def train(self):
@@ -143,13 +141,13 @@ class network(object):
 
             # Avg per img loss: Err = f(I0,I1) + I1 - I0.5
             loss = self.criterion(output + i1_crop, label)
-            # loss_test = self.criterion_test(output + i1_crop, label)
-            # loss_testx = self.criterion_testx(output + i1_crop, label)
-            # print("train")
-            # pdb.set_trace()
             loss.backward()
             self.optimizer.step()
-            print(self.step, loss.item())
+            print("step{}, loss: {}".format(self.step, loss.item()))
+            # with torch.no_grad():
+
+            out = self.model(duo)
+            valid_result = self.criterion(out+i1_crop, label)
 
             if self.step % 5 == 0:
                 valid_result = self.valid()
@@ -169,7 +167,7 @@ class network(object):
         num_batch = 0
 
         with torch.no_grad():
-            for b_id, (i0, i1, label) in enumerate(self.valid_loader):
+            for b_id, (i0, i1, label) in enumerate(self.train_loader):
                 # Only cut i1 for err calc
                 i1_crop = i1[:,:,self.ltl[0]:self.lbr[0],self.ltl[1]:self.lbr[1]]
                 # Concatenate two input imgs in NCHW format
@@ -179,15 +177,14 @@ class network(object):
                 # Err = f(I0,I1) + I1 - I0.5
                 # L1 Loss
                 loss = self.criterion(output + i1_crop, label)
-                # loss_test = self.criterion_test(output + i1_crop, label)
-                # loss_testx = self.criterion_testx(output + i1_crop, label)
-                # print("valid")
-                # pdb.set_trace()
                 valid_loss += loss.item()
                 print("batch{}, loss: {}".format(b_id, loss.item()))
                 num_batch = b_id + 1
+                if b_id > 20:
+                    break
 
         valid_loss /= num_batch
+
         return valid_loss
 
 
@@ -244,7 +241,7 @@ class network(object):
         self.load_data()
         self.load_model()
 
-        sample_input=(torch.rand(1, 8, self.input_size[0], self.input_size[1])) # To trace the flow sizes
+        sample_input=(torch.rand(1, 8, self.input_size[0], self.input_size[1]))
         self.writer.add_graph(model = ResNet(), input_to_model=sample_input)
 
         accuracy = 0

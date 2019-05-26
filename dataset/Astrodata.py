@@ -79,9 +79,12 @@ class Astrodata(Dataset):
         ndarray: numpy array in HWC
         '''
         n_chan = ndarray.shape[-1]
+        import pdb
+        pdb.set_trace()
         for c_i in range(n_chan):
             c_max = np.amax(ndarray[:,:,c_i])
-            ndarray[:,:,c_i] = ndarray[:,:,c_i] / c_max
+            c_min = np.amin(ndarray[:,:,c_i])
+            ndarray[:,:,c_i] = ndarray[:,:,c_i] / (c_max - c_min) - 0.5
 
         # return (ndarray * 255).astype(np.uint8)
         return ndarray
