@@ -74,7 +74,7 @@ sys_arg.add_argument("--lr", type=float,
                     help="Learning rate")
 
 sys_arg.add_argument("--epochs", type=int,
-                    default=3,
+                    default=15,
                     help="Number of epochs")
 
 sys_arg.add_argument("--checkpoint_freq", type=int, 
