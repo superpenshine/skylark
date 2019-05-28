@@ -217,7 +217,7 @@ class network(object):
                 valid_loss += loss.item()
                 print("batch{}, loss: {}".format(b_id, loss.item()))
                 num_batch = b_id + 1
-                if b_id > 20:
+                if b_id == 0:
                     break
 
         valid_loss /= num_batch
@@ -292,8 +292,8 @@ class network(object):
         for epoch in range(start_epoch, self.epochs + 1):
             self.scheduler.step(epoch)
             print("\n===> epoch: {}/{}".format(epoch, self.epochs))
-            # train_result = self.train()
             train_result = self.train()
+            # train_result = self.single_batch_train()
             print("Epoch {} loss: {}".format(epoch, train_result))
             # accuracy = max(accuracy, valid_result[1])
             # test_result = self.test()
