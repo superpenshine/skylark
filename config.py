@@ -50,7 +50,7 @@ sys_arg.add_argument("--valid_size", type=float,
                     help="Validation sample percentage (<=1.0)")
 
 sys_arg.add_argument("--min_step_diff", type=int,
-                    default=20,
+                    default=40,
                     help="None or an integer indicating min step difference")
 
 sys_arg.add_argument("--max_step_diff", type=int,
@@ -66,11 +66,11 @@ sys_arg.add_argument("--label_size", type=tuple,
                     help="Label image size")
 
 sys_arg.add_argument("--batch_size", type=int,
-                    default=5,
+                    default=1,
                     help="Batch size")
 
 sys_arg.add_argument("--lr", type=float,
-                    default=0.0001,
+                    default=0.0002,
                     help="Learning rate")
 
 sys_arg.add_argument("--epochs", type=int,

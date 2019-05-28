@@ -152,7 +152,7 @@ class GroupRandomCrop(object):
             return low.crop((j, i, j+self.size[1], i+self.size[0])), \
             high.crop((j, i, j+self.size[1], i+self.size[0])), \
             mid.crop((j+self.inner_pad_size[1], i+self.inner_pad_size[0], j+self.label_size[1], i+self.label_size[0]))
-
+        # print("crop location upper left: {}, {}".format(i, j))
         return low[i:i+self.size[0], j:j+self.size[1]], \
         high[i:i+self.size[0], j:j+self.size[1]], \
         mid[i+self.inner_pad_size[0]:i+self.inner_pad_size[0]+self.label_size[0], j+self.inner_pad_size[1]:j+self.inner_pad_size[1]+self.label_size[1]]

@@ -53,7 +53,7 @@ class network(object):
         '''
         Load the tensorboard writter
         '''
-        self.writer = SummaryWriter(log_dir = str(self.log_dir))
+        self.writer = SummaryWriter(log_dir = str(self.log_dir), flush_secs=0)
 
 
     def load_data(self):
@@ -117,7 +117,48 @@ class network(object):
         self.model = ResNet().to(self.device)
         self.optimizer = optim.Adam(self.model.parameters(), lr=self.lr)
         self.scheduler = optim.lr_scheduler.MultiStepLR(self.optimizer, milestones=[75, 150], gamma=0.5)
-        self.criterion = L1Loss().to(self.device)
+        self.criterion = L1Loss(reduction='sum').to(self.device)
+
+
+    def single_batch_train(self):
+        '''
+        Overfit over one batch
+        '''
+        output2 = None
+
+        print("\ntrain:")
+        self.model.train()
+        for b_id, (i0, i1, label) in enumerate(self.train_loader):
+            i1_crop = i1[:,:,self.ltl[0]:self.lbr[0],self.ltl[1]:self.lbr[1]]
+            duo = torch.cat([i0, i1], dim=1)
+            duo, label, i1_crop = duo.to(self.device), label.to(self.device), i1_crop.to(self.device)
+            # a = torch.tensor(duo)
+            break
+        for iter_id in range(400):
+            output = self.model(duo)
+            # if output2 is not None:
+            #     print(output-output2)
+            #     output2 = None
+            loss = self.criterion(output + i1_crop, label)
+            self.optimizer.zero_grad()
+            loss.backward()
+            self.optimizer.step()
+            print("step{}, loss: {}".format(self.step, loss.item()))
+            # print(duo - a)
+            if self.step % 5 == 0:
+                print("\nvalid:")
+                # print(self.model.state_dict().keys())
+                # print(self.model.state_dict()['layer1.0.bn.running_mean'])
+                self.model.eval()
+                with torch.no_grad():
+                    output2 = self.model(duo)
+                    valid_loss = self.criterion(output2 + i1_crop, label)
+                    print("batch{}, loss: {}".format(b_id, valid_loss.item()))
+                self.model.train()
+                self.writer.add_scalar('Train/Loss', loss.item(), self.step)
+                self.writer.add_scalar('Valid/Loss', valid_loss, self.step)
+                # print(self.model.state_dict()['layer1.0.bn.running_mean'])
+            self.step += 1
 
 
     def train(self):
@@ -144,10 +185,6 @@ class network(object):
             loss.backward()
             self.optimizer.step()
             print("step{}, loss: {}".format(self.step, loss.item()))
-            # with torch.no_grad():
-
-            out = self.model(duo)
-            valid_result = self.criterion(out+i1_crop, label)
 
             if self.step % 5 == 0:
                 valid_result = self.valid()
@@ -255,6 +292,7 @@ class network(object):
         for epoch in range(start_epoch, self.epochs + 1):
             self.scheduler.step(epoch)
             print("\n===> epoch: {}/{}".format(epoch, self.epochs))
+            # train_result = self.train()
             train_result = self.train()
             print("Epoch {} loss: {}".format(epoch, train_result))
             # accuracy = max(accuracy, valid_result[1])
@@ -272,10 +310,47 @@ class network(object):
             os.remove(self.checkpoint)
 
 
+    # def test_full(self):
+    #     self.load_writer()
+    #     var = 1
+    #     tran = transforms.Resize((32, 32))
+    #     data_tr = Astrodata(self.tr_data_dir, 
+    #                         min_step_diff = self.min_step_diff, 
+    #                         max_step_diff = self.max_step_diff, 
+    #                         rtn_log_grid = False) # RandomCrop is group op
+
+    #     data_va = Astrodata(self.va_data_dir, 
+    #                         min_step_diff = self.min_step_diff, 
+    #                         max_step_diff = self.max_step_diff, 
+    #                         rtn_log_grid = False) # RandomCrop is group op
+    #     i0, i1, label = data_tr[np.random.randint(0, len(data_tr)-1)]
+    #     self.writer.add_images('step0/raw/i0_label_i1', np.expand_dims(np.stack([i0[:,:,var], label[:,:,var], i1[:,:,var]]), 3), dataformats='NHWC')
+    #     tran3 = ToTensor()
+    #     i0 = tran3(i0)
+    #     i1 = tran3(i1)
+    #     label = tran3(label)
+    #     device = torch.device('cpu')
+    #     self.load(map_location=device)
+    #     self.model.eval()
+    #     with torch.no_grad():
+    #         i1_crop = i1[:,8:1016,8:1016]
+    #         duo = torch.cat([i0, i1], dim=0)
+    #         duo = torch.unsqueeze(duo, 0)
+    #         output = self.model(duo)
+    #         out = output[0] + i1_crop
+
+    #     out = out[var]
+    #     self.writer.add_image('step4/synthetic', out, dataformats='HW')
+
+    #     i1_crop = i1_crop[var]
+    #     self.writer.add_image('step5/i1_centercrop', i1_crop, dataformats='HW')
+
+
     def test_single(self):
         '''
-        Test the model using single input
+        Test the model using single inputj, for illustration
         '''
+        self.load_writer()
         group_trans_id = [2]
         tran0 = CustomPad((int((self.input_size[1]-1)*0.5), 0, int((self.input_size[1]-1)*0.5), 0), 'circular')
         tran1 = CustomPad((0, int((self.input_size[0]-1)*0.5), 0, int((self.input_size[0]-1)*0.5)), 'zero', constant_values=0)
@@ -296,34 +371,45 @@ class network(object):
 
         # Normalized triplet without transform
         i0, i1, label = data_tr[np.random.randint(0, len(data_tr)-1)]
-        plt.subplot(n_row, 3, 1, label='i0_raw')
-        plt.imshow(i0[:,:,var], vmin=0, vmax=1)
-        plt.subplot(n_row, 3, 2, label='i1_raw')
-        plt.imshow(label[:,:,var], vmin=0, vmax=1)
-        plt.subplot(n_row, 3, 3, label='i2_raw')
-        plt.imshow(i1[:,:,var], vmin=0, vmax=1)
+        # plt.subplot(n_row, 3, 1)
+        # plt.imshow(i0[:,:,var])
+        # plt.subplot(n_row, 3, 2)
+        # plt.imshow(label[:,:,var])
+        # plt.subplot(n_row, 3, 3)
+        # plt.imshow(i1[:,:,var])
+        self.writer.add_images('step0/raw/i0_label_i1', np.expand_dims(np.stack([i0[:,:,var], label[:,:,var], i1[:,:,var]]), 3), dataformats='NHWC')
+        # self.writer.add_image('i0_raw', i0[:,:,var], dataformats='HW')
+        # self.writer.add_image('gt_raw', label[:,:,var], dataformats='HW')
+        # self.writer.add_image('i1_raw', i1[:,:,var], dataformats='HW')
 
         i0 = tran0(i0)
         i1 = tran0(i1)
         label = tran0(label)
-
         i0 = tran1(i0)
         i1 = tran1(i1)
         label = tran1(label)
-        plt.subplot(n_row, 3, 4, label='i0_pad')
-        plt.imshow(i0[:,:,var], vmin=0, vmax=1)
-        plt.subplot(n_row, 3, 5, label='i1_pad')
-        plt.imshow(label[:,:,var], vmin=0, vmax=1)
-        plt.subplot(n_row, 3, 6, label='i2_pad')
-        plt.imshow(i1[:,:,var], vmin=0, vmax=1)
+        # plt.subplot(n_row, 3, 4)
+        # plt.imshow(i0[:,:,var])
+        # plt.subplot(n_row, 3, 5)
+        # plt.imshow(label[:,:,var])
+        # plt.subplot(n_row, 3, 6)
+        # plt.imshow(i1[:,:,var])
+        self.writer.add_images('step1/pad/i0_label_i1', np.expand_dims(np.stack([i0[:,:,var], label[:,:,var], i1[:,:,var]]), 3), dataformats='NHWC')
+        # self.writer.add_image('i0_pad', i0[:,:,var], dataformats='HW')
+        # self.writer.add_image('gt_pad', label[:,:,var], dataformats='HW')
+        # self.writer.add_image('i1_pad', i1[:,:,var], dataformats='HW')
 
         i0, i1, label = tran2(i0, i1, label)
-        plt.subplot(n_row, 3, 7, label='i0_randcrop')
-        plt.imshow(i0[:,:,var], vmin=0, vmax=1)
-        plt.subplot(n_row, 3, 8, label='i1_randcrop')
-        plt.imshow(label[:,:,var], vmin=0, vmax=1)
-        plt.subplot(n_row, 3, 9, label='i2_randcrop')
-        plt.imshow(i1[:,:,var], vmin=0, vmax=1)
+        # plt.subplot(n_row, 3, 7)
+        # plt.imshow(i0[:,:,var])
+        # plt.subplot(n_row, 3, 8)
+        # plt.imshow(label[:,:,var])
+        # plt.subplot(n_row, 3, 9)
+        # plt.imshow(i1[:,:,var])
+        # self.writer.add_images('step2/randcrop/i0_label_i1', np.expand_dims(np.stack([i0[:,:,var], label[:,:,var], i1[:,:,var]]), 3), dataformats='NHWC')
+        self.writer.add_image('step2.1/i0_randcrop', i0[:,:,var], dataformats='HW')
+        self.writer.add_image('step2.2/gt_randcrop', label[:,:,var], dataformats='HW')
+        self.writer.add_image('step2.3/i1_randcrop', i1[:,:,var], dataformats='HW')
 
         i0 = tran3(i0)
         i1 = tran3(i1)
@@ -337,25 +423,32 @@ class network(object):
             duo = torch.cat([i0, i1], dim=0)
             duo = torch.unsqueeze(duo, 0)
             output = self.model(duo)
-            print(output)
             out = output[0] + i1_crop
             residue = torch.abs(out - label)
             original_diff = torch.abs(i1_crop - label)
 
+        original_diff = original_diff[var]
+        # plt.subplot(n_row, 3, 10)
+        # plt.imshow(original_diff)
+        # self.writer.add_image('i1-gt', original_diff, dataformats='HW')
         residue = residue[var]
-        plt.subplot(n_row, 3, 11, label='residue')
-        plt.imshow(residue, vmin=0, vmax=1)
+        # plt.subplot(n_row, 3, 11)
+        # plt.imshow(residue)
+        # self.writer.add_image('synthetic-gt', residue, dataformats='HW')
+        # self.writer.add_images('step3/i1-gt_synthetic-gt', np.expand_dims(np.stack([i0[:,:,var], label[:,:,var], i1[:,:,var]]), 3), dataformats='NHWC')
+
+        # test = np.array([[1.0, 1.0], [0.4, 0.7]])
+        # plt.subplot(n_row, 3, 13)
+        # plt.imshow(test, vmin=0, vmax=1)
 
         out = out[var]
-        plt.subplot(n_row, 3, 14, label='out')
-        plt.imshow(out, vmin=0, vmax=1)
+        # plt.subplot(n_row, 3, 14)
+        # plt.imshow(out)
+        self.writer.add_image('step4/synthetic', out, dataformats='HW')
 
         i1_crop = i1_crop[var]
-        plt.subplot(n_row, 3, 15, label='i2_crop')
-        plt.imshow(i1_crop, vmin=0, vmax=1)
+        # plt.subplot(n_row, 3, 15)
+        # plt.imshow(i1_crop)
+        self.writer.add_image('step5/i1_centercrop', i1_crop, dataformats='HW')
 
-
-        original_diff = original_diff[var]
-        plt.subplot(n_row, 3, 10, label='original_diff')
-        plt.imshow(original_diff, vmin=0, vmax=1)
-        plt.show()
+        # plt.show()

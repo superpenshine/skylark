@@ -72,6 +72,7 @@ def main():
     solver = network(config)
     solver.run()
     # solver.test_single()
+    # solver.test_full()
 
 
 if __name__ == "__main__":
