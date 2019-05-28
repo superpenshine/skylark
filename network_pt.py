@@ -177,11 +177,11 @@ class network(object):
             # Concatenate two input imgs in NCHW format
             duo = torch.cat([i0, i1], dim=1)
             duo, label, i1_crop = duo.to(self.device), label.to(self.device), i1_crop.to(self.device)
-            self.optimizer.zero_grad()
             output = self.model(duo)
 
             # Avg per img loss: Err = f(I0,I1) + I1 - I0.5
             loss = self.criterion(output + i1_crop, label)
+            self.optimizer.zero_grad()
             loss.backward()
             self.optimizer.step()
             print("step{}, loss: {}".format(self.step, loss.item()))
@@ -204,7 +204,7 @@ class network(object):
         num_batch = 0
 
         with torch.no_grad():
-            for b_id, (i0, i1, label) in enumerate(self.train_loader):
+            for b_id, (i0, i1, label) in enumerate(self.valid_loader):
                 # Only cut i1 for err calc
                 i1_crop = i1[:,:,self.ltl[0]:self.lbr[0],self.ltl[1]:self.lbr[1]]
                 # Concatenate two input imgs in NCHW format

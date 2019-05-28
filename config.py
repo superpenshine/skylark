@@ -66,7 +66,7 @@ sys_arg.add_argument("--label_size", type=tuple,
                     help="Label image size")
 
 sys_arg.add_argument("--batch_size", type=int,
-                    default=1,
+                    default=15,
                     help="Batch size")
 
 sys_arg.add_argument("--lr", type=float,
