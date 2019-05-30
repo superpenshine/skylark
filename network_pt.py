@@ -397,7 +397,7 @@ class network(object):
                 valid_loss += loss.item()
                 print("batch{}, loss: {}".format(b_id, loss.item()))
                 num_batch = b_id + 1
-                if b_id == 40:
+                if b_id == 5:
                     break
 
         valid_loss /= num_batch
