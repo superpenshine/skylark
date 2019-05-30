@@ -2,8 +2,11 @@
 
 import pdb
 import os
+import cv2
+import math
 import numpy as np
 import matplotlib.pyplot as plt
+
 from model import ResNet18, ResNet
 from pathlib import Path
 from util.transform import CustomPad, GroupRandomCrop, ToTensor
@@ -60,10 +63,8 @@ class network(object):
         '''
         Prepare train/test data
         '''
-        trans = [CustomPad((int((self.input_size[1]-1)*0.5), 0, int((self.input_size[1]-1)*0.5), 0), 'circular'), 
-                 CustomPad((0, int((self.input_size[0]-1)*0.5), 0, int((self.input_size[0]-1)*0.5)), 'zero', constant_values=0), 
-                 # CustomPad((0, int((self.input_size[1]-1)*0.5), 0, int((self.input_size[1]-1)*0.5)), 'circular'), 
-                 # CustomPad((int((self.input_size[0]-1)*0.5), 0, int((self.input_size[0]-1)*0.5), 0), 'zero', constant_values=0), 
+        trans = [CustomPad((math.ceil((self.input_size[1] - self.label_size[1])/2), 0, math.ceil((self.input_size[1] - self.label_size[1])/2), 0), 'circular'), 
+                 CustomPad((0, math.ceil((self.input_size[0] - self.label_size[0])/2), 0, math.ceil((self.input_size[0] - self.label_size[0])/2)), 'zero', constant_values=0), 
                  GroupRandomCrop(self.input_size, label_size=self.label_size), 
                  ToTensor()
                  # transforms.ToPILImage(), 
@@ -120,15 +121,181 @@ class network(object):
         self.criterion = L1Loss().to(self.device)
 
 
+    def sanity_check_randcrop(self):
+        '''
+        train over ramdomly cropped patch from one triplets
+        '''
+        self.load_writer()
+        self.load_model()
+
+        self.data_tr = Astrodata(self.tr_data_dir, 
+                            min_step_diff = self.min_step_diff, 
+                            max_step_diff = self.max_step_diff, 
+                            rtn_log_grid = False) # RandomCrop is group op
+
+        self.data_va = Astrodata(self.va_data_dir, 
+                            min_step_diff = self.min_step_diff, 
+                            max_step_diff = self.max_step_diff, 
+                            rtn_log_grid = False) # RandomCrop is group op
+        pad = transforms.Compose([CustomPad((8, 0, 8, 0), 'circular'), 
+                                  CustomPad((0, 8, 0, 8), 'zero', constant_values=0)])
+        to_tensor = ToTensor()
+        g_randcroup = GroupRandomCrop(self.input_size, label_size=self.label_size)
+
+        i0, i1, label = self.data_tr[np.random.randint(0, len(self.data_tr)-1)]
+        i0 = cv2.resize(i0, dsize=(512, 512), interpolation=cv2.INTER_LINEAR)
+        i1 = cv2.resize(i1, dsize=(512, 512), interpolation=cv2.INTER_LINEAR)
+        label_input = cv2.resize(label, dsize=(512, 512), interpolation=cv2.INTER_LINEAR)
+        # Pad inputs back to input size
+        i0_input = pad(i0)
+        i1_input = pad(i1)
+        label_input = pad(label_input)
+
+        self.model.train()
+
+        for iter_id in range(400):
+
+            i0, i1, label = g_randcroup(i0_input, i1_input, label_input)
+            i0 = to_tensor(i0)
+            i1 = to_tensor(i1)
+            label = to_tensor(label)
+            duo = torch.unsqueeze(torch.cat([i0, i1], dim=0), 0)
+            i1_crop = i1[:,self.ltl[0]:self.lbr[0],self.ltl[1]:self.lbr[1]]
+            i1_crop = torch.unsqueeze(i1_crop, 0)
+            duo, label, i1_crop = duo.to(self.device), label.to(self.device), i1_crop.to(self.device)
+            output = self.model(duo)
+            # if output2 is not None:
+            #     print(output-output2)
+            #     output2 = None
+            loss = self.criterion(output + i1_crop, torch.unsqueeze(label, 0))
+            self.optimizer.zero_grad()
+            loss.backward()
+            self.optimizer.step()
+            print("step{}, loss: {}".format(self.step, loss.item()))
+            # print(duo - a)
+            if self.step % 5 == 0:
+                print("\nvalid:")
+                # print(self.model.state_dict().keys())
+                # print(self.model.state_dict()['layer1.0.bn.running_mean'])
+                self.model.eval()
+                with torch.no_grad():
+                    output2 = self.model(duo)
+                    valid_loss = self.criterion(output2 + i1_crop, torch.unsqueeze(label, 0))
+                    print("valid loss: {}".format(valid_loss.item()))
+                self.model.train()
+                self.writer.add_scalar('Train/Loss', loss.item(), self.step)
+                self.writer.add_scalar('Valid/Loss', valid_loss, self.step)
+                # print(self.model.state_dict()['layer1.0.bn.running_mean'])
+            self.step += 1
+        # visualize overfit result
+        var=1
+        self.model.eval()
+
+        i0_input = to_tensor(i0_input)
+        i1_input = to_tensor(i1_input)
+        label_input = to_tensor(label_input)
+        duo = torch.unsqueeze(torch.cat([i0_input, i1_input], dim=0), 0)
+        # self.ltl = (8, 8)
+        # self.lbr = (self.ltl[0] + self.label_size[0], self.ltl[1] + self.label_size[1])
+        i1_crop = i1_input[:,8:512+8,8:512+8]
+        duo, i1_crop = duo.to(self.device), i1_crop.to(self.device)
+        with torch.no_grad():
+            output = self.model(duo)
+            out = output[0] + i1_crop
+        self.writer.add_image('i0', i0_input[var], dataformats='HW')
+        self.writer.add_image('gt', label_input[var], dataformats='HW')
+        self.writer.add_image('synthesized', out[var], dataformats='HW')
+        self.writer.add_image('i1_unpadded', i1_crop[var], dataformats='HW')
+
+        self.save()
+
+
+    def sanity_check_no_randcrop(self):
+        self.load_writer()
+        self.load_model()
+
+        self.data_tr = Astrodata(self.tr_data_dir, 
+                            min_step_diff = self.min_step_diff, 
+                            max_step_diff = self.max_step_diff, 
+                            rtn_log_grid = False) # RandomCrop is group op
+
+        self.data_va = Astrodata(self.va_data_dir, 
+                            min_step_diff = self.min_step_diff, 
+                            max_step_diff = self.max_step_diff, 
+                            rtn_log_grid = False) # RandomCrop is group op
+        pad = transforms.Compose([CustomPad((8, 0, 8, 0), 'circular'), 
+                                  CustomPad((0, 8, 0, 8), 'zero', constant_values=0)])
+        random_crop = GroupRandomCrop(self.input_size, label_size=self.label_size)
+        to_tensor = ToTensor()
+
+        i0, i1, label = self.data_tr[np.random.randint(0, len(self.data_tr)-1)]
+        # Shrink to label size
+        i0 = cv2.resize(i0, dsize=self.label_size, interpolation=cv2.INTER_LINEAR)
+        i1 = cv2.resize(i1, dsize=self.label_size, interpolation=cv2.INTER_LINEAR)
+        i1_crop = np.array(i1) # for output calculation
+        label = cv2.resize(label, dsize=self.label_size, interpolation=cv2.INTER_LINEAR)
+        # Pad inputs back to input size
+        i0 = pad(i0)
+        i1 = pad(i1)
+        i0 = to_tensor(i0)
+        i1 = to_tensor(i1)
+        i1_crop = to_tensor(i1_crop)
+        label = to_tensor(label)
+        duo = torch.unsqueeze(torch.cat([i0, i1], dim=0), 0)
+        duo, label, i1_crop = duo.to(self.device), label.to(self.device), i1_crop.to(self.device)
+
+        self.model.train()
+
+        for iter_id in range(1):
+            output = self.model(duo)
+            # if output2 is not None:
+            #     print(output-output2)
+            #     output2 = None
+            loss = self.criterion(output + i1_crop, torch.unsqueeze(label, 0))
+            self.optimizer.zero_grad()
+            loss.backward()
+            self.optimizer.step()
+            print("step{}, loss: {}".format(self.step, loss.item()))
+            # print(duo - a)
+            if self.step % 5 == 0:
+                print("\nvalid:")
+                # print(self.model.state_dict().keys())
+                # print(self.model.state_dict()['layer1.0.bn.running_mean'])
+                self.model.eval()
+                with torch.no_grad():
+                    output2 = self.model(duo)
+                    valid_loss = self.criterion(output2 + i1_crop, torch.unsqueeze(label, 0))
+                    print("valid loss: {}".format(valid_loss.item()))
+                self.model.train()
+                self.writer.add_scalar('Train/Loss', loss.item(), self.step)
+                self.writer.add_scalar('Valid/Loss', valid_loss, self.step)
+                # print(self.model.state_dict()['layer1.0.bn.running_mean'])
+            self.step += 1
+        # visualize overfit result
+        var=1
+        self.model.eval()
+        i1_crop = i1_crop
+        with torch.no_grad():
+            output = self.model(duo)
+            out = output[0] + i1_crop
+        # pdb.set_trace()
+        self.writer.add_image('i0', i0[var], dataformats='HW')
+        self.writer.add_image('gt', label[var], dataformats='HW')
+        self.writer.add_image('synthesized', out[var], dataformats='HW')
+        self.writer.add_image('i1_unpadded', i1_crop[var], dataformats='HW')
+
+        self.save()
+
     def single_batch_train(self):
         '''
-        Overfit over one batch
+        Overfit over one batch, for loss check only
         '''
         output2 = None
 
         print("\ntrain:")
         self.model.train()
         for b_id, (i0, i1, label) in enumerate(self.train_loader):
+            input1 = i0
             i1_crop = i1[:,:,self.ltl[0]:self.lbr[0],self.ltl[1]:self.lbr[1]]
             duo = torch.cat([i0, i1], dim=1)
             duo, label, i1_crop = duo.to(self.device), label.to(self.device), i1_crop.to(self.device)
@@ -159,6 +326,19 @@ class network(object):
                 self.writer.add_scalar('Valid/Loss', valid_loss, self.step)
                 # print(self.model.state_dict()['layer1.0.bn.running_mean'])
             self.step += 1
+        self.save()
+        # visualize overfit result
+        var=1
+        self.model.eval()
+        i1_crop = i1_crop[0]
+        with torch.no_grad():
+            output = self.model(duo)
+            out = output[0] + i1_crop
+        # pdb.set_trace()
+        self.writer.add_image('step2.1/i0_randcrop', input1[0,var], dataformats='HW')
+        self.writer.add_image('step2.2/gt_randcrop', label[0,var], dataformats='HW')
+        self.writer.add_image('step4/synthetic', out[var], dataformats='HW')
+        self.writer.add_image('step5/i1_centercrop', i1_crop[var], dataformats='HW')
 
 
     def train(self):
@@ -217,7 +397,7 @@ class network(object):
                 valid_loss += loss.item()
                 print("batch{}, loss: {}".format(b_id, loss.item()))
                 num_batch = b_id + 1
-                if b_id == 0:
+                if b_id == 40:
                     break
 
         valid_loss /= num_batch
@@ -292,8 +472,8 @@ class network(object):
         for epoch in range(start_epoch, self.epochs + 1):
             self.scheduler.step(epoch)
             print("\n===> epoch: {}/{}".format(epoch, self.epochs))
+            # train_result = self.train()
             train_result = self.train()
-            # train_result = self.single_batch_train()
             print("Epoch {} loss: {}".format(epoch, train_result))
             # accuracy = max(accuracy, valid_result[1])
             # test_result = self.test()
@@ -325,10 +505,10 @@ class network(object):
     #                         rtn_log_grid = False) # RandomCrop is group op
     #     i0, i1, label = data_tr[np.random.randint(0, len(data_tr)-1)]
     #     self.writer.add_images('step0/raw/i0_label_i1', np.expand_dims(np.stack([i0[:,:,var], label[:,:,var], i1[:,:,var]]), 3), dataformats='NHWC')
-    #     tran3 = ToTensor()
-    #     i0 = tran3(i0)
-    #     i1 = tran3(i1)
-    #     label = tran3(label)
+    #     to_tensor = ToTensor()
+    #     i0 = to_tensor(i0)
+    #     i1 = to_tensor(i1)
+    #     label = to_tensor(label)
     #     device = torch.device('cpu')
     #     self.load(map_location=device)
     #     self.model.eval()
@@ -351,11 +531,10 @@ class network(object):
         Test the model using single inputj, for illustration
         '''
         self.load_writer()
-        group_trans_id = [2]
-        tran0 = CustomPad((int((self.input_size[1]-1)*0.5), 0, int((self.input_size[1]-1)*0.5), 0), 'circular')
-        tran1 = CustomPad((0, int((self.input_size[0]-1)*0.5), 0, int((self.input_size[0]-1)*0.5)), 'zero', constant_values=0)
-        tran2 = GroupRandomCrop(self.input_size, label_size=self.label_size)
-        tran3 = ToTensor()
+        pad = transforms.Compose([CustomPad((math.ceil((self.input_size[1] - self.label_size[1])/2), 0, math.ceil((self.input_size[1] - self.label_size[1])/2), 0), 'circular'), 
+                                  CustomPad((0, math.ceil((self.input_size[0] - self.label_size[0])/2), 0, math.ceil((self.input_size[0] - self.label_size[0])/2)), 'zero', constant_values=0)])
+        # tran2 = GroupRandomCrop(self.input_size, label_size=self.label_size)
+        to_tensor = ToTensor()
         var = 1
         n_row = 5
 
@@ -371,35 +550,34 @@ class network(object):
 
         # Normalized triplet without transform
         i0, i1, label = data_tr[np.random.randint(0, len(data_tr)-1)]
+        i0 = cv2.resize(i0, dsize=(512, 512), interpolation=cv2.INTER_LINEAR)
+        i1 = cv2.resize(i1, dsize=(512, 512), interpolation=cv2.INTER_LINEAR)
+        label = cv2.resize(label, dsize=(512, 512), interpolation=cv2.INTER_LINEAR)
+        i1_label_sized = i1
         # plt.subplot(n_row, 3, 1)
         # plt.imshow(i0[:,:,var])
         # plt.subplot(n_row, 3, 2)
         # plt.imshow(label[:,:,var])
         # plt.subplot(n_row, 3, 3)
         # plt.imshow(i1[:,:,var])
-        self.writer.add_images('step0/raw/i0_label_i1', np.expand_dims(np.stack([i0[:,:,var], label[:,:,var], i1[:,:,var]]), 3), dataformats='NHWC')
+        self.writer.add_images('triplet', np.expand_dims(np.stack([i0[:,:,var], label[:,:,var], i1[:,:,var]]), 3), dataformats='NHWC')
         # self.writer.add_image('i0_raw', i0[:,:,var], dataformats='HW')
         # self.writer.add_image('gt_raw', label[:,:,var], dataformats='HW')
         # self.writer.add_image('i1_raw', i1[:,:,var], dataformats='HW')
-
-        i0 = tran0(i0)
-        i1 = tran0(i1)
-        label = tran0(label)
-        i0 = tran1(i0)
-        i1 = tran1(i1)
-        label = tran1(label)
+        i0 = pad(i0)
+        i1 = pad(i1)
         # plt.subplot(n_row, 3, 4)
         # plt.imshow(i0[:,:,var])
         # plt.subplot(n_row, 3, 5)
         # plt.imshow(label[:,:,var])
         # plt.subplot(n_row, 3, 6)
         # plt.imshow(i1[:,:,var])
-        self.writer.add_images('step1/pad/i0_label_i1', np.expand_dims(np.stack([i0[:,:,var], label[:,:,var], i1[:,:,var]]), 3), dataformats='NHWC')
+        self.writer.add_images('padded_inputs', np.expand_dims(np.stack([i0[:,:,var], i1[:,:,var]]), 3), dataformats='NHWC')
         # self.writer.add_image('i0_pad', i0[:,:,var], dataformats='HW')
         # self.writer.add_image('gt_pad', label[:,:,var], dataformats='HW')
         # self.writer.add_image('i1_pad', i1[:,:,var], dataformats='HW')
 
-        i0, i1, label = tran2(i0, i1, label)
+        # i0, i1, label = tran2(i0, i1, label)
         # plt.subplot(n_row, 3, 7)
         # plt.imshow(i0[:,:,var])
         # plt.subplot(n_row, 3, 8)
@@ -407,25 +585,25 @@ class network(object):
         # plt.subplot(n_row, 3, 9)
         # plt.imshow(i1[:,:,var])
         # self.writer.add_images('step2/randcrop/i0_label_i1', np.expand_dims(np.stack([i0[:,:,var], label[:,:,var], i1[:,:,var]]), 3), dataformats='NHWC')
-        self.writer.add_image('step2.1/i0_randcrop', i0[:,:,var], dataformats='HW')
-        self.writer.add_image('step2.2/gt_randcrop', label[:,:,var], dataformats='HW')
-        self.writer.add_image('step2.3/i1_randcrop', i1[:,:,var], dataformats='HW')
+        # self.writer.add_image('step2.1/i0_randcrop', i0[:,:,var], dataformats='HW')
+        # self.writer.add_image('step2.2/gt_randcrop', label[:,:,var], dataformats='HW')
+        # self.writer.add_image('step2.3/i1_randcrop', i1[:,:,var], dataformats='HW')
 
-        i0 = tran3(i0)
-        i1 = tran3(i1)
-        label = tran3(label)
+        i0 = to_tensor(i0)
+        i1 = to_tensor(i1)
+        label = to_tensor(label)
+        i1_label_sized = to_tensor(i1_label_sized)
 
         device = torch.device('cpu')
         self.load(map_location=device)
         self.model.eval()
         with torch.no_grad():
-            i1_crop = i1[:,self.ltl[0]:self.lbr[0],self.ltl[1]:self.lbr[1]]
             duo = torch.cat([i0, i1], dim=0)
             duo = torch.unsqueeze(duo, 0)
             output = self.model(duo)
-            out = output[0] + i1_crop
+            out = output[0] + i1_label_sized
             residue = torch.abs(out - label)
-            original_diff = torch.abs(i1_crop - label)
+            original_diff = torch.abs(i1_label_sized - label)
 
         original_diff = original_diff[var]
         # plt.subplot(n_row, 3, 10)
@@ -446,9 +624,9 @@ class network(object):
         # plt.imshow(out)
         self.writer.add_image('step4/synthetic', out, dataformats='HW')
 
-        i1_crop = i1_crop[var]
+        i1_label_sized = i1_label_sized[var]
         # plt.subplot(n_row, 3, 15)
-        # plt.imshow(i1_crop)
-        self.writer.add_image('step5/i1_centercrop', i1_crop, dataformats='HW')
+        # plt.imshow(i1_label_sized)
+        self.writer.add_image('step5/i1_centercrop', i1_label_sized, dataformats='HW')
 
         # plt.show()

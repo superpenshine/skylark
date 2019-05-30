@@ -5,3 +5,4 @@ matplotlib
 tb-nightly
 pillow
 future
+opencv-python

@@ -17,4 +17,5 @@ Python requirements:
 * tb-nightly
 * Future
 * Pillow
+* opencv-python
 

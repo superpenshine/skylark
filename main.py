@@ -71,6 +71,8 @@ def main():
 
     solver = network(config)
     solver.run()
+    # solver.sanity_check_randcrop()
+    # solver.sanity_check_no_randcrop()
     # solver.test_single()
     # solver.test_full()
 
