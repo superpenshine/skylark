@@ -549,7 +549,7 @@ class network(object):
                             rtn_log_grid = False) # RandomCrop is group op
 
         # Normalized triplet without transform
-        i0, i1, label = data_tr[np.random.randint(0, len(data_tr)-1)]
+        i0, i1, label = data_va[np.random.randint(0, len(data_va)-1)]
         i0 = cv2.resize(i0, dsize=(512, 512), interpolation=cv2.INTER_LINEAR)
         i1 = cv2.resize(i1, dsize=(512, 512), interpolation=cv2.INTER_LINEAR)
         label = cv2.resize(label, dsize=(512, 512), interpolation=cv2.INTER_LINEAR)
@@ -622,11 +622,11 @@ class network(object):
         out = out[var]
         # plt.subplot(n_row, 3, 14)
         # plt.imshow(out)
-        self.writer.add_image('step4/synthetic', out, dataformats='HW')
+        self.writer.add_image('synthetic', out, dataformats='HW')
 
         i1_label_sized = i1_label_sized[var]
         # plt.subplot(n_row, 3, 15)
         # plt.imshow(i1_label_sized)
-        self.writer.add_image('step5/i1_centercrop', i1_label_sized, dataformats='HW')
+        self.writer.add_image('i1_centercrop', i1_label_sized, dataformats='HW')
 
         # plt.show()
