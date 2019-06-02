@@ -549,10 +549,10 @@ class network(object):
                             rtn_log_grid = False) # RandomCrop is group op
 
         # Normalized triplet without transform
-        i0, i1, label = data_va[np.random.randint(0, len(data_va)-1)]
-        i0 = cv2.resize(i0, dsize=(512, 512), interpolation=cv2.INTER_LINEAR)
-        i1 = cv2.resize(i1, dsize=(512, 512), interpolation=cv2.INTER_LINEAR)
-        label = cv2.resize(label, dsize=(512, 512), interpolation=cv2.INTER_LINEAR)
+        i0, i1, label = data_tr[np.random.randint(0, len(data_tr)-1)]
+        i0 = cv2.resize(i0, dsize=(256, 256), interpolation=cv2.INTER_LINEAR)
+        i1 = cv2.resize(i1, dsize=(256, 256), interpolation=cv2.INTER_LINEAR)
+        label = cv2.resize(label, dsize=(256, 256), interpolation=cv2.INTER_LINEAR)
         i1_label_sized = i1
         # plt.subplot(n_row, 3, 1)
         # plt.imshow(i0[:,:,var])
@@ -595,14 +595,21 @@ class network(object):
         i1_label_sized = to_tensor(i1_label_sized)
 
         device = torch.device('cpu')
-        self.load(map_location=device)
+        if Path(self.model_dir).exists():
+            self.load(map_location=device)
+        else:
+            print("Model file does not exists, trying checkpoint")
+            self.load_checkpoint()
+
         self.model.eval()
         with torch.no_grad():
             duo = torch.cat([i0, i1], dim=0)
             duo = torch.unsqueeze(duo, 0)
             output = self.model(duo)
             out = output[0] + i1_label_sized
-            residue = torch.abs(out - label)
+            # plt.subplot(111)
+            # plt.imshow(out)
+            residue = out - label
             original_diff = torch.abs(i1_label_sized - label)
 
         original_diff = original_diff[var]
@@ -618,6 +625,7 @@ class network(object):
         # test = np.array([[1.0, 1.0], [0.4, 0.7]])
         # plt.subplot(n_row, 3, 13)
         # plt.imshow(test, vmin=0, vmax=1)
+        self.writer.add_image('residue', residue, dataformats='HW')
 
         out = out[var]
         # plt.subplot(n_row, 3, 14)
@@ -629,4 +637,16 @@ class network(object):
         # plt.imshow(i1_label_sized)
         self.writer.add_image('i1_centercrop', i1_label_sized, dataformats='HW')
 
-        # plt.show()
+        plt.subplot(141)
+        plt.imshow(label[var])   
+        plt.colorbar() 
+        plt.subplot(142)
+        plt.imshow(out)
+        plt.colorbar()
+        plt.subplot(143)
+        plt.imshow(i1_label_sized)
+        plt.colorbar()
+        plt.subplot(144)
+        plt.imshow(residue, vmin=torch.min(residue), vmax=torch.max(residue))
+        plt.colorbar()
+        plt.show()
