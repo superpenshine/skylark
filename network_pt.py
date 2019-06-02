@@ -638,7 +638,8 @@ class network(object):
         # plt.imshow(i1_label_sized)
         self.writer.add_image('i1_centercrop', i1_label_sized, dataformats='HW')
 
-        plt.figure(figsize=(40, 213))
+        # default dpi 6.4, 4.8
+        plt.figure(figsize=(20, 4))
         plt.subplot(221)
         plt.imshow(label[var])   
         plt.colorbar() 
