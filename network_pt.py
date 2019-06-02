@@ -537,6 +537,7 @@ class network(object):
         to_tensor = ToTensor()
         var = 1
         n_row = 5
+        visualization_size = (1024, 1024)
 
         data_tr = Astrodata(self.tr_data_dir, 
                             min_step_diff = self.min_step_diff, 
@@ -550,9 +551,9 @@ class network(object):
 
         # Normalized triplet without transform
         i0, i1, label = data_tr[np.random.randint(0, len(data_tr)-1)]
-        i0 = cv2.resize(i0, dsize=(256, 256), interpolation=cv2.INTER_LINEAR)
-        i1 = cv2.resize(i1, dsize=(256, 256), interpolation=cv2.INTER_LINEAR)
-        label = cv2.resize(label, dsize=(256, 256), interpolation=cv2.INTER_LINEAR)
+        i0 = cv2.resize(i0, dsize=visualization_size, interpolation=cv2.INTER_LINEAR)
+        i1 = cv2.resize(i1, dsize=visualization_size, interpolation=cv2.INTER_LINEAR)
+        label = cv2.resize(label, dsize=visualization_size, interpolation=cv2.INTER_LINEAR)
         i1_label_sized = i1
         # plt.subplot(n_row, 3, 1)
         # plt.imshow(i0[:,:,var])
