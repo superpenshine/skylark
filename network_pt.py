@@ -537,7 +537,7 @@ class network(object):
         to_tensor = ToTensor()
         var = 1
         n_row = 5
-        visualization_size = (1024, 1024)
+        visualization_size = (256, 256)
 
         data_tr = Astrodata(self.tr_data_dir, 
                             min_step_diff = self.min_step_diff, 
@@ -638,17 +638,17 @@ class network(object):
         # plt.imshow(i1_label_sized)
         self.writer.add_image('i1_centercrop', i1_label_sized, dataformats='HW')
 
-        
-        plt.subplot(141)
+        plt.figure(dpi=200)
+        plt.subplot(221)
         plt.imshow(label[var])   
         plt.colorbar() 
-        plt.subplot(142)
+        plt.subplot(222)
         plt.imshow(out)
         plt.colorbar()
-        plt.subplot(143)
+        plt.subplot(223)
         plt.imshow(i1_label_sized)
         plt.colorbar()
-        plt.subplot(144)
+        plt.subplot(224)
         plt.imshow(residue, vmin=torch.min(residue), vmax=torch.max(residue))
         plt.colorbar()
         # plt.show()
