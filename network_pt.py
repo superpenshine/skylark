@@ -638,6 +638,7 @@ class network(object):
         # plt.imshow(i1_label_sized)
         self.writer.add_image('i1_centercrop', i1_label_sized, dataformats='HW')
 
+        
         plt.subplot(141)
         plt.imshow(label[var])   
         plt.colorbar() 
@@ -651,4 +652,4 @@ class network(object):
         plt.imshow(residue, vmin=torch.min(residue), vmax=torch.max(residue))
         plt.colorbar()
         # plt.show()
-        fig.savefig("a.png")
+        plt.savefig("a.png")
