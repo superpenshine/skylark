@@ -650,4 +650,5 @@ class network(object):
         plt.subplot(144)
         plt.imshow(residue, vmin=torch.min(residue), vmax=torch.max(residue))
         plt.colorbar()
-        plt.show()
+        # plt.show()
+        fig.savefig("a.png")
