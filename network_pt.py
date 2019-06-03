@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 
 from model import ResNet18, ResNet
 from pathlib import Path
-from util.transform import CustomPad, GroupRandomCrop, ToTensor
+from util.transform import CustomPad, GroupRandomCrop, ToTensor, Resize
 from dataset.Astrodata import Astrodata
 
 import torch
@@ -39,10 +39,11 @@ class network(object):
         self.batch_size = config.batch_size
         self.checkpoint_freq = config.checkpoint_freq
         self.input_size = config.input_size
+        self.crop_size = config.crop_size
         self.label_size = config.label_size
 
         # Sizes to crop the input img
-        self.ltl = (int(0.5 * (self.input_size[0] - self.label_size[0])), int(0.5 * (self.input_size[1] - self.label_size[1])))
+        self.ltl = (int(0.5 * (self.crop_size[0] - self.label_size[0])), int(0.5 * (self.crop_size[1] - self.label_size[1])))
         self.lbr = (self.ltl[0] + self.label_size[0], self.ltl[1] + self.label_size[1])
 
         self.tr_data_dir = Path(self.data_dir + "_tr.h5")
@@ -63,9 +64,10 @@ class network(object):
         '''
         Prepare train/test data
         '''
-        trans = [CustomPad((math.ceil((self.input_size[1] - self.label_size[1])/2), 0, math.ceil((self.input_size[1] - self.label_size[1])/2), 0), 'circular'), 
-                 CustomPad((0, math.ceil((self.input_size[0] - self.label_size[0])/2), 0, math.ceil((self.input_size[0] - self.label_size[0])/2)), 'zero', constant_values=0), 
-                 GroupRandomCrop(self.input_size, label_size=self.label_size), 
+        trans = [Resize((self.input_size)), 
+                 CustomPad((math.ceil((self.crop_size[1] - self.label_size[1])/2), 0, math.ceil((self.crop_size[1] - self.label_size[1])/2), 0), 'circular'), 
+                 CustomPad((0, math.ceil((self.crop_size[0] - self.label_size[0])/2), 0, math.ceil((self.crop_size[0] - self.label_size[0])/2)), 'zero', constant_values=0), 
+                 GroupRandomCrop(self.crop_size, label_size=self.label_size), 
                  ToTensor()
                  # transforms.ToPILImage(), 
                  # transforms.Resize((128, 128)), # Using RandomCrop now
@@ -79,14 +81,14 @@ class network(object):
                             max_step_diff = self.max_step_diff, 
                             rtn_log_grid = False, 
                             transforms = trans, 
-                            group_trans_id = [2]) # RandomCrop is group op
+                            group_trans_id = [3]) # RandomCrop is group op
 
         self.data_va = Astrodata(self.va_data_dir, 
                             min_step_diff = self.min_step_diff, 
                             max_step_diff = self.max_step_diff, 
                             rtn_log_grid = False, 
                             transforms = trans, 
-                            group_trans_id = [2]) # RandomCrop is group op
+                            group_trans_id = [3]) # RandomCrop is group op
         # np.random.seed(1234)
         # indices = list(range(len(data)))
         # np.random.shuffle(indices)
@@ -140,7 +142,7 @@ class network(object):
         pad = transforms.Compose([CustomPad((8, 0, 8, 0), 'circular'), 
                                   CustomPad((0, 8, 0, 8), 'zero', constant_values=0)])
         to_tensor = ToTensor()
-        g_randcroup = GroupRandomCrop(self.input_size, label_size=self.label_size)
+        g_randcroup = GroupRandomCrop(self.crop_size, label_size=self.label_size)
 
         i0, i1, label = self.data_tr[np.random.randint(0, len(self.data_tr)-1)]
         i0 = cv2.resize(i0, dsize=(512, 512), interpolation=cv2.INTER_LINEAR)
@@ -225,7 +227,7 @@ class network(object):
                             rtn_log_grid = False) # RandomCrop is group op
         pad = transforms.Compose([CustomPad((8, 0, 8, 0), 'circular'), 
                                   CustomPad((0, 8, 0, 8), 'zero', constant_values=0)])
-        random_crop = GroupRandomCrop(self.input_size, label_size=self.label_size)
+        random_crop = GroupRandomCrop(self.crop_size, label_size=self.label_size)
         to_tensor = ToTensor()
 
         i0, i1, label = self.data_tr[np.random.randint(0, len(self.data_tr)-1)]
@@ -366,7 +368,7 @@ class network(object):
             self.optimizer.step()
             print("step{}, loss: {}".format(self.step, loss.item()))
 
-            if self.step % 5 == 0:
+            if self.step % 10 == 0:
                 valid_result = self.valid()
                 self.model.train()
                 self.writer.add_scalar('Train/Loss', loss.item(), self.step)
@@ -458,7 +460,7 @@ class network(object):
         self.load_data()
         self.load_model()
 
-        sample_input=(torch.rand(1, 8, self.input_size[0], self.input_size[1]))
+        sample_input=(torch.rand(1, 8, self.crop_size[0], self.crop_size[1]))
         self.writer.add_graph(model = ResNet(), input_to_model=sample_input)
 
         accuracy = 0
@@ -531,13 +533,12 @@ class network(object):
         Test the model using single inputj, for illustration
         '''
         self.load_writer()
-        pad = transforms.Compose([CustomPad((math.ceil((self.input_size[1] - self.label_size[1])/2), 0, math.ceil((self.input_size[1] - self.label_size[1])/2), 0), 'circular'), 
-                                  CustomPad((0, math.ceil((self.input_size[0] - self.label_size[0])/2), 0, math.ceil((self.input_size[0] - self.label_size[0])/2)), 'zero', constant_values=0)])
-        # tran2 = GroupRandomCrop(self.input_size, label_size=self.label_size)
+        pad = transforms.Compose([CustomPad((math.ceil((self.crop_size[1] - self.label_size[1])/2), 0, math.ceil((self.crop_size[1] - self.label_size[1])/2), 0), 'circular'), 
+                                  CustomPad((0, math.ceil((self.crop_size[0] - self.label_size[0])/2), 0, math.ceil((self.crop_size[0] - self.label_size[0])/2)), 'zero', constant_values=0)])
+        # tran2 = GroupRandomCrop(self.crop_size, label_size=self.label_size)
         to_tensor = ToTensor()
         var = 1
         n_row = 5
-        visualization_size = (1024, 1024)
 
         data_tr = Astrodata(self.tr_data_dir, 
                             min_step_diff = self.min_step_diff, 
@@ -551,9 +552,9 @@ class network(object):
 
         # Normalized triplet without transform
         i0, i1, label = data_tr[np.random.randint(0, len(data_tr)-1)]
-        i0 = cv2.resize(i0, dsize=visualization_size, interpolation=cv2.INTER_LINEAR)
-        i1 = cv2.resize(i1, dsize=visualization_size, interpolation=cv2.INTER_LINEAR)
-        label = cv2.resize(label, dsize=visualization_size, interpolation=cv2.INTER_LINEAR)
+        i0 = cv2.resize(i0, dsize=self.input_size, interpolation=cv2.INTER_LINEAR)
+        i1 = cv2.resize(i1, dsize=self.input_size, interpolation=cv2.INTER_LINEAR)
+        label = cv2.resize(label, dsize=self.input_size, interpolation=cv2.INTER_LINEAR)
         i1_label_sized = i1
         # plt.subplot(n_row, 3, 1)
         # plt.imshow(i0[:,:,var])

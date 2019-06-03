@@ -50,7 +50,7 @@ sys_arg.add_argument("--valid_size", type=float,
                     help="Validation sample percentage (<=1.0)")
 
 sys_arg.add_argument("--min_step_diff", type=int,
-                    default=20,
+                    default=40,
                     help="None or an integer indicating min step difference")
 
 sys_arg.add_argument("--max_step_diff", type=int,
@@ -58,15 +58,19 @@ sys_arg.add_argument("--max_step_diff", type=int,
                     help="None or an integer indicating max step difference")
 
 sys_arg.add_argument("--input_size", type=tuple, 
-                    default=(130, 130), 
+                    default=(64, 64), 
+                    help="Input image size")
+
+sys_arg.add_argument("--crop_size", type=tuple, 
+                    default=(32, 32), 
                     help="Input image size")
 
 sys_arg.add_argument("--label_size", type=tuple, 
-                    default=(114, 114), 
+                    default=(16, 16), 
                     help="Label image size")
 
 sys_arg.add_argument("--batch_size", type=int,
-                    default=10,
+                    default=15,
                     help="Batch size")
 
 sys_arg.add_argument("--lr", type=float,
@@ -74,7 +78,7 @@ sys_arg.add_argument("--lr", type=float,
                     help="Learning rate")
 
 sys_arg.add_argument("--epochs", type=int,
-                    default=30,
+                    default=21,
                     help="Number of epochs")
 
 sys_arg.add_argument("--checkpoint_freq", type=int, 

@@ -1,5 +1,6 @@
 # Custom transform class for pytorch dataloader
 
+import cv2
 import torch
 import numpy as np
 from PIL import Image
@@ -69,6 +70,21 @@ class CustomPad(object):
             return Image.fromarray(img)
 
         return img
+
+
+class Resize(object):
+    '''
+    Resize ndarray to target size
+    '''
+    def __init__(self, size, interpolation=cv2.INTER_LINEAR):
+        self.size = size
+        self.interpolation = interpolation
+
+    def __call__(self, img):
+        if not isinstance(img, np.ndarray):
+            raise TypeError("Custom ToTensor takes numpy array as input")
+
+        return cv2.resize(img, dsize=self.size, interpolation=self.interpolation)
 
 
 class ToTensor(object):
