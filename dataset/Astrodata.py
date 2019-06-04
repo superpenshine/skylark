@@ -10,7 +10,7 @@ class Astrodata(Dataset):
     Astro dataset class
     ''' 
 
-    def __init__(self, data_dir, min_step_diff = None, max_step_diff = None, rtn_log_grid = False, transforms = None, group_trans_id = None):
+    def __init__(self, data_dir, min_step_diff = None, max_step_diff = None, rtn_log_grid = False, transforms = None, group_trans_id = None, verbose = False):
         '''
         transform: transformations to apply on imgs
         '''
@@ -23,6 +23,7 @@ class Astrodata(Dataset):
         self.rtn_log_grid = rtn_log_grid
         self.transforms = transforms
         self.group_trans_id = group_trans_id
+        self.verbose = verbose
 
         self.calc_valid_step_diffs()
         self.step_diff_validity_check()
@@ -39,11 +40,11 @@ class Astrodata(Dataset):
         l, h: Two input imgs for training
         m: label img
         '''
-        d, l, h, m = self.mapping(idx)
+        d, l_id, h_id, m_id = self.mapping(idx)
         # print(d, l, h, m)
-        l = self.data[d][str(l)]
-        h = self.data[d][str(h)]
-        m = self.data[d][str(m)]
+        l = self.data[d][str(l_id)]
+        h = self.data[d][str(h_id)]
+        m = self.data[d][str(m_id)]
 
         # Transform to uint8 0-255, required by PIL module
         l = self.normalize(np.array(l))
@@ -60,6 +61,12 @@ class Astrodata(Dataset):
                 l = transform(l)
                 h = transform(h)
                 m = transform(m)
+
+        # Verbose mode, print disk and triplets index
+        if self.verbose:
+            print("triplets id: ", idx)
+            print("disk name: ", d)
+            print("Image_t0_idx: {}, Image_t1_idx: {}, label_idx: {}".format(l_id, h_id, m_id))
 
         if self.rtn_log_grid:
             log_grid = np.asarray(self.data[d]["log_grid"])
