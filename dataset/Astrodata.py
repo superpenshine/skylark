@@ -10,7 +10,7 @@ class Astrodata(Dataset):
     Astro dataset class
     ''' 
 
-    def __init__(self, data_dir, min_step_diff = None, max_step_diff = None, rtn_log_grid = False, transforms = None, group_trans_id = None, verbose = False):
+    def __init__(self, data_dir, min_step_diff = None, max_step_diff = None, rtn_log_grid = False, transforms = None, verbose = False):
         '''
         transform: transformations to apply on imgs
         '''
@@ -55,8 +55,17 @@ class Astrodata(Dataset):
         if self.transforms:
             for t_i, transform in enumerate(self.transforms):
                 # second transform is a group opration
-                if t_i in self.group_trans_id:
+                # if t_i in self.group_trans_id:
+                if hasattr(transform, 'group_tran'):
                     l, h, m = transform(l, h, m)
+                    continue
+                # Check if func arguments requires of log_grid
+                # if 'log_grid' in transform.__call__.__code__.co_varnames:
+                if hasattr(transform, 'require_grid'):
+                    log_grid = np.asarray(self.data[d]["log_grid"])
+                    l = transform(log_grid, l)
+                    h = transform(log_grid, h)
+                    m = transform(log_grid, m)
                     continue
                 l = transform(l)
                 h = transform(h)

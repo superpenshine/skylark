@@ -2,8 +2,11 @@
 
 import cv2
 import torch
+import time
 import numpy as np
 from PIL import Image
+from functools import partial
+from scipy.ndimage import map_coordinates
 
 np_pad_name = {'zero':'constant', 
                'circular': 'wrap'}
@@ -13,7 +16,7 @@ class CustomPad(object):
     Circular Pad Image
     input:
         pad: int or 4-elements tuple
-        img: PIL image
+        img: PIL image or ndarray
     """
 
     def __init__(self, pad, mode, **kwargs):
@@ -75,6 +78,7 @@ class CustomPad(object):
 class Resize(object):
     '''
     Resize ndarray to target size
+    Take ndarray as input
     '''
     def __init__(self, size, interpolation=cv2.INTER_LINEAR):
         self.size = size
@@ -87,9 +91,31 @@ class Resize(object):
         return cv2.resize(img, dsize=self.size, interpolation=self.interpolation)
 
 
+class LogPolartoPolar(object):
+    '''
+    Transfer x from log to linear space
+    Take ndarray as input
+    '''
+    require_grid = True
+
+    def __call__(self, log_grid, img):
+        '''
+        Arround .7 sec per call on i7-8750h
+        '''
+        nx, ny, nchan = img.shape
+
+        # Scale log_grid numbers to actual image pixel index
+        log_grid_expanded = (log_grid - log_grid[0]) / (log_grid[-1] - log_grid[0]) * ny
+        rp1, rp2 = np.meshgrid(np.linspace(0, nx, nx), np.digitize(np.linspace(0, ny, ny), log_grid_expanded)-1)
+        one_chan_imgs = list(map(lambda chan: np.expand_dims(map_coordinates(img[:,:,chan], (rp2, rp1)), 2), range(nchan)))
+        polar_data = np.concatenate(one_chan_imgs, axis=2)
+
+        return polar_data
+
 class ToTensor(object):
     '''
     Convet numpy array to tensor
+    Take ndarray as input
     '''
     def __call__(self, img):
         if not isinstance(img, np.ndarray):
@@ -103,6 +129,8 @@ class GroupRandomCrop(object):
     Return a random crop at the same position of three input imgs
     input: 2 input images and 1 label image
     '''
+    group_tran = True
+
     def __init__(self, size, label_size = None):
         '''
         size: height x width

@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 
 from model import ResNet18, ResNet
 from pathlib import Path
-from util.transform import CustomPad, GroupRandomCrop, ToTensor, Resize
+from util.transform import CustomPad, GroupRandomCrop, ToTensor, Resize, LogPolartoPolar
 from dataset.Astrodata import Astrodata
 
 import torch
@@ -64,7 +64,8 @@ class network(object):
         '''
         Prepare train/test data
         '''
-        trans = [Resize((self.input_size)), 
+        trans = [LogPolartoPolar(),
+                 Resize((self.input_size)), 
                  CustomPad((math.ceil((self.crop_size[1] - self.label_size[1])/2), 0, math.ceil((self.crop_size[1] - self.label_size[1])/2), 0), 'circular'), 
                  CustomPad((0, math.ceil((self.crop_size[0] - self.label_size[0])/2), 0, math.ceil((self.crop_size[0] - self.label_size[0])/2)), 'zero', constant_values=0), 
                  GroupRandomCrop(self.crop_size, label_size=self.label_size), 
@@ -80,15 +81,13 @@ class network(object):
                             min_step_diff = self.min_step_diff, 
                             max_step_diff = self.max_step_diff, 
                             rtn_log_grid = False, 
-                            transforms = trans, 
-                            group_trans_id = [3]) # RandomCrop is group op
+                            transforms = trans) # RandomCrop is group op
 
         self.data_va = Astrodata(self.va_data_dir, 
                             min_step_diff = self.min_step_diff, 
                             max_step_diff = self.max_step_diff, 
                             rtn_log_grid = False, 
-                            transforms = trans, 
-                            group_trans_id = [3]) # RandomCrop is group op
+                            transforms = trans) # RandomCrop is group op
         # np.random.seed(1234)
         # indices = list(range(len(data)))
         # np.random.shuffle(indices)
@@ -145,17 +144,27 @@ class network(object):
         g_randcroup = GroupRandomCrop(self.crop_size, label_size=self.label_size)
 
         i0, i1, label = self.data_tr[np.random.randint(0, len(self.data_tr)-1)]
-        i0 = cv2.resize(i0, dsize=(512, 512), interpolation=cv2.INTER_LINEAR)
-        i1 = cv2.resize(i1, dsize=(512, 512), interpolation=cv2.INTER_LINEAR)
-        label_input = cv2.resize(label, dsize=(512, 512), interpolation=cv2.INTER_LINEAR)
-        # Pad inputs back to input size
+
+        # test over a toy example, step at 32, 
+        i0 = np.zeros((self.input_size[0], self.input_size[1], 4), dtype=np.float32)
+        i0[:50] = i0[:50] + 1
+        i1 = np.zeros((self.input_size[0], self.input_size[1], 4), dtype=np.float32)
+        i1[:30] = i1[:30] + 1
+        label_input = np.zeros((self.input_size[0], self.input_size[1], 4), dtype=np.float32)
+        label_input[:40] = label_input[:40] + 1
+
+
+        # i0 = cv2.resize(i0, dsize=(512, 512), interpolation=cv2.INTER_LINEAR)
+        # i1 = cv2.resize(i1, dsize=(512, 512), interpolation=cv2.INTER_LINEAR)
+        # label_input = cv2.resize(label, dsize=(512, 512), interpolation=cv2.INTER_LINEAR)
+
         i0_input = pad(i0)
         i1_input = pad(i1)
         label_input = pad(label_input)
 
         self.model.train()
 
-        for iter_id in range(400):
+        for iter_id in range(800):
 
             i0, i1, label = g_randcroup(i0_input, i1_input, label_input)
             i0 = to_tensor(i0)
@@ -199,7 +208,7 @@ class network(object):
         duo = torch.unsqueeze(torch.cat([i0_input, i1_input], dim=0), 0)
         # self.ltl = (8, 8)
         # self.lbr = (self.ltl[0] + self.label_size[0], self.ltl[1] + self.label_size[1])
-        i1_crop = i1_input[:,8:512+8,8:512+8]
+        i1_crop = i1_input[:,8:self.input_size[0]+8,8:self.input_size[0]+8]
         duo, i1_crop = duo.to(self.device), i1_crop.to(self.device)
         with torch.no_grad():
             output = self.model(duo)
@@ -210,6 +219,24 @@ class network(object):
         self.writer.add_image('i1_unpadded', i1_crop[var], dataformats='HW')
 
         self.save()
+        plt.subplot(241)
+        plt.imshow(i0_input[var].to('cpu')[var])
+        plt.colorboar()
+        plt.title('i0')
+        plt.subplot(242)
+        plt.title('GT')
+        plt.imshow(label_input.to('cpu')[var])   
+        plt.colorbar() 
+        plt.subplot(243)
+        plt.title('Out')
+        plt.imshow(out.to('cpu')[var])
+        plt.colorbar()
+        plt.subplot(244)
+        plt.title('i1')
+        plt.imshow(i1_crop.to('cpu')[var])
+        plt.colorbar()
+
+        plt.show()
 
 
     def sanity_check_no_randcrop(self):
@@ -537,6 +564,10 @@ class network(object):
             self.load(map_location=device)
         else:
             print("Model file does not exists, trying checkpoint")
+            self.model = ResNet().to(device)
+            self.optimizer = optim.Adam(self.model.parameters(), lr=self.lr)
+            self.scheduler = optim.lr_scheduler.MultiStepLR(self.optimizer, milestones=[75, 150], gamma=0.5)
+            self.criterion = L1Loss().to(device)
             self.load_checkpoint()
 
         self.model.eval()
