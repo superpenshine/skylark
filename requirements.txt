@@ -6,3 +6,4 @@ tb-nightly
 pillow
 future
 opencv-python
+scipy

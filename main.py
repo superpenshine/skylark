@@ -21,7 +21,7 @@ if len(unparsed) > 0:
 
 def main():
     # preview_raw(config, 'D:/sigma_data/sigma_data0150.bin', config.data_dir / config.f_gird, polar=False, var=1)
-    save_to_h5(config, trva=True, polar=True)
+    # save_to_h5(config, trva=True, polar=True)
     
     # data, grid = load(str(config.h5_dir) + "_tr.h5", "sigma_data", 50)
     # preview(data, grid, polar=False)
@@ -69,8 +69,8 @@ def main():
     #     writer.close()
     #     break
 
-    # solver = network(config)
-    # solver.run()
+    solver = network(config)
+    solver.run()
     # solver.sanity_check_randcrop()
     # solver.sanity_check_no_randcrop()
     # solver.test_single()

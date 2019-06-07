@@ -18,4 +18,5 @@ Python requirements:
 * Future
 * Pillow
 * opencv-python
+* scipy
 
