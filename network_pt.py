@@ -64,8 +64,8 @@ class network(object):
         '''
         Prepare train/test data
         '''
-        trans = [LogPolartoPolar(),
-                 Resize((self.input_size)), 
+        trans = [Resize((self.input_size)), 
+                 LogPolartoPolar(),
                  CustomPad((math.ceil((self.crop_size[1] - self.label_size[1])/2), 0, math.ceil((self.crop_size[1] - self.label_size[1])/2), 0), 'circular'), 
                  CustomPad((0, math.ceil((self.crop_size[0] - self.label_size[0])/2), 0, math.ceil((self.crop_size[0] - self.label_size[0])/2)), 'zero', constant_values=0), 
                  GroupRandomCrop(self.crop_size, label_size=self.label_size), 
