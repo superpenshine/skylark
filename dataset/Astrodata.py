@@ -22,7 +22,6 @@ class Astrodata(Dataset):
         self.max_step_diff = max_step_diff
         self.rtn_log_grid = rtn_log_grid
         self.transforms = transforms
-        self.group_trans_id = group_trans_id
         self.verbose = verbose
 
         self.calc_valid_step_diffs()
