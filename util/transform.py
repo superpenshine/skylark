@@ -106,11 +106,13 @@ class LogPolartoPolar(object):
 
         # Scale log_grid numbers to actual image pixel index
         log_grid_expanded = (log_grid - log_grid[0]) / (log_grid[-1] - log_grid[0]) * ny
-        rp1, rp2 = np.meshgrid(np.linspace(0, nx, nx), np.digitize(np.linspace(0, ny, ny), log_grid_expanded)-1)
+        digitized_x = np.digitize(np.linspace(0, ny, ny), log_grid_expanded)-1
+        rp1, rp2 = np.meshgrid(np.linspace(0, nx, nx), digitized_x)
         one_chan_imgs = list(map(lambda chan: np.expand_dims(map_coordinates(img[:,:,chan], (rp2, rp1)), 2), range(nchan)))
         polar_data = np.concatenate(one_chan_imgs, axis=2)
 
         return polar_data
+
 
 class ToTensor(object):
     '''
@@ -176,9 +178,10 @@ class GroupRandomCrop(object):
         '''
         l, h, m: img_t0, img_t1, img_t0.5
         '''
+
         if not isinstance(low, (Image.Image, np.ndarray)):
             raise TypeError(
-                'img should be either PIL Image or ndarray. Got {}'.format(type(l)))
+                'img should be either PIL Image or ndarray. Got {}'.format(type(low)))
         if isinstance(low, np.ndarray):
             self.numpy_mode = True
 

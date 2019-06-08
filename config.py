@@ -20,13 +20,15 @@ sys_arg = add_argument_group("Data")
 
 # Params you want to change for local system uses
 sys_arg.add_argument("--data_dir", type=Path,
-                    # default='D:/sigma_data',
-                    default='/home/sht/data/sigma_data',
+                    default='D:/sigma_data',
+                    # default='/home/sht/data/sigma_data',
                     help="Directory to data folder")
 
 sys_arg.add_argument("--h5_dir", type=Path,
-                    # default='D:/sigma_data/data',
-                    default='/home/sht/data/sigma_data/data', 
+                    # default='D:/sigma_data/data_polar',
+                    # default='D:/sigma_data/data_logpolar',
+                    # default='/home/sht/data/sigma_data/data_polar', 
+                    default='/home/sht/data/sigma_data/data_logpolar', 
                     help="Data file name without the .5 extension")
 
 sys_arg.add_argument("--f_gird", type=Path,
@@ -78,7 +80,7 @@ sys_arg.add_argument("--lr", type=float,
                     help="Learning rate")
 
 sys_arg.add_argument("--epochs", type=int,
-                    default=21,
+                    default=20,
                     help="Number of epochs")
 
 sys_arg.add_argument("--checkpoint_freq", type=int, 

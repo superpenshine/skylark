@@ -17,6 +17,11 @@ if platform.system() == "Darwin":
 import matplotlib.pyplot as plt
 
 
+def test(data, log_grid):
+    toPolar = LogPolartoPolar()
+    toPolar(log_grid, data)
+
+
 def get_ny(data, log_grid, nvar):
     '''
     Calculate ny from data shapes
