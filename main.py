@@ -23,7 +23,7 @@ def main():
     # preview_raw(config, 'D:/sigma_data/sigma_data0150.bin', config.data_dir / config.f_gird, polar=False, var=1)
     # save_to_h5(config, trva=True, polar=True)
     
-    # data, grid = load(str(config.h5_dir) + "_tr.h5", "sigma_data", 5)
+    # data, grid = load(str(config.h5_dir) + "_tr.h5", "sigma_data", 10)
     # preview(data, grid, polar=False)
     # test(data, grid)
 
@@ -34,7 +34,7 @@ def main():
     solver.run()
     # solver.sanity_check_randcrop()
     # solver.sanity_check_no_randcrop()
-    # solver.test_single()
+    # solver.test_single(triplet_id = 6)
     # solver.test_full()
 
 

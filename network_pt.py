@@ -411,7 +411,7 @@ class network(object):
             self.optimizer.zero_grad()
             loss.backward()
             self.optimizer.step()
-            print("step{}, loss: {}".format(self.step, loss.item()))
+            print("step{}, loss: {:.4f}".format(self.step, loss.item()))
 
             if self.step % 10 == 0:
                 valid_result = self.valid()
@@ -537,7 +537,7 @@ class network(object):
             os.remove(self.checkpoint)
 
 
-    def test_single(self):
+    def test_single(self, triplet_id = None):
         '''
         Test the model using single inputj, for illustration
         '''
@@ -562,7 +562,9 @@ class network(object):
                             verbose = True) # RandomCrop is group op
 
         # Normalized triplet without transform
-        i0, i1, label = data_tr[np.random.randint(0, len(data_tr)-1)]
+        if not triplet_id:
+            triplet_id = np.random.randint(0, len(data_tr)-1)
+        i0, i1, label = data_tr[triplet_id]
         i0 = cv2.resize(i0, dsize=self.input_size, interpolation=cv2.INTER_LINEAR)
         i1 = cv2.resize(i1, dsize=self.input_size, interpolation=cv2.INTER_LINEAR)
         label = cv2.resize(label, dsize=self.input_size, interpolation=cv2.INTER_LINEAR)

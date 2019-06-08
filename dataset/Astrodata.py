@@ -130,7 +130,10 @@ class Astrodata(Dataset):
                 continue
 
             l, h, m = self.find_triplets(i, idx)
+
             return (self.d_names[i], l, h, m)
+
+        raise ValueError("Invalid index number {}, maximum index supported is {}".format(idx, self.__len__() - 1))
 
 
     def find_triplets(self, disk_idx, idx):
