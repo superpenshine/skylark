@@ -65,7 +65,7 @@ class network(object):
         Prepare train/test data
         '''
         trans = [Resize((self.input_size)), 
-                 LogPolartoPolar(),
+                 # LogPolartoPolar(),
                  CustomPad((math.ceil((self.crop_size[1] - self.label_size[1])/2), 0, math.ceil((self.crop_size[1] - self.label_size[1])/2), 0), 'circular'), 
                  CustomPad((0, math.ceil((self.crop_size[0] - self.label_size[0])/2), 0, math.ceil((self.crop_size[0] - self.label_size[0])/2)), 'zero', constant_values=0), 
                  GroupRandomCrop(self.crop_size, label_size=self.label_size), 
@@ -121,8 +121,8 @@ class network(object):
         self.model = ResNet().to(self.device)
         self.optimizer = optim.Adam(self.model.parameters(), lr=self.lr)
         self.scheduler = optim.lr_scheduler.MultiStepLR(self.optimizer, milestones=[75, 150], gamma=0.5)
-        # self.criterion = MSELoss().to(self.device)
-        self.criterion = L1Loss().to(self.device)
+        self.criterion = MSELoss().to(self.device)
+        # self.criterion = L1Loss().to(self.device)
 
 
     def sanity_check_randcrop(self):

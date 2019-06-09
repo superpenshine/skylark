@@ -32,9 +32,9 @@ def main():
 
     solver = network(config)
     solver.run()
+    # solver.test_single(triplet_id = 40)
     # solver.sanity_check_randcrop()
     # solver.sanity_check_no_randcrop()
-    # solver.test_single(triplet_id = 6)
     # solver.test_full()
 
 

@@ -27,10 +27,10 @@ class ResUnit(nn.Module):
         super(ResUnit, self).__init__()
         self.conv1 = ConvBlock(fan_in, fan_out, stride=stride)
         # self.bn = nn.BatchNorm2d(fan_out)
-        self.gn1 = nn.GroupNorm(4, fan_out)
+        self.gn1 = nn.GroupNorm(1, fan_out)
         self.relu = nn.ReLU(inplace=True)
         self.conv2 = ConvBlock(fan_out, fan_out)
-        self.gn2 = nn.GroupNorm(4, fan_out)
+        self.gn2 = nn.GroupNorm(1, fan_out)
         self.downsample = downsample
 
     def forward(self, x):
