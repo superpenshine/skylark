@@ -24,12 +24,15 @@ sys_arg.add_argument("--data_dir", type=Path,
                     # default='/home/sht/data/sigma_data',
                     help="Directory to data folder")
 
-sys_arg.add_argument("--h5_dir", type=Path,
+sys_arg.add_argument("--h5_dir_win", type=Path,
                     # default='D:/sigma_data/data_polar',
-                    # default='D:/sigma_data/data_logpolar',
+                    default='D:/sigma_data/data_logpolar',
+                    help="Win data file without the .h5 suffix")
+
+sys_arg.add_argument("--h5_dir_linux", type=Path,
                     # default='/home/sht/data/sigma_data/data_polar', 
                     default='/home/sht/data/sigma_data/data_logpolar', 
-                    help="Data file name without the .5 extension")
+                    help="Linux data file without the .h5 suffix")
 
 sys_arg.add_argument("--f_gird", type=Path,
                     default='log_grid.dat',
@@ -52,7 +55,7 @@ sys_arg.add_argument("--valid_size", type=float,
                     help="Validation sample percentage (<=1.0)")
 
 sys_arg.add_argument("--min_step_diff", type=int,
-                    default=40,
+                    default=None,
                     help="None or an integer indicating min step difference")
 
 sys_arg.add_argument("--max_step_diff", type=int,

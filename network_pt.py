@@ -29,7 +29,10 @@ class network(object):
         self.checkpoint = "checkpoint.tar"
         self.model_dir = "model.pth"
         self.log_dir = config.log_dir
-        self.data_dir = str(config.h5_dir)
+        if os.name == 'nt':
+            self.data_dir = str(config.h5_dir_win)
+        else:
+            self.data_dir = str(config.h5_dir_linux)
         self.valid_size = config.valid_size
         self.min_step_diff = config.min_step_diff
         self.max_step_diff = config.max_step_diff
@@ -65,7 +68,7 @@ class network(object):
         Prepare train/test data
         '''
         trans = [Resize((self.input_size)), 
-                 # LogPolartoPolar(),
+                 # LogPolartoPolar(), # Use polar data instead, too expensive
                  CustomPad((math.ceil((self.crop_size[1] - self.label_size[1])/2), 0, math.ceil((self.crop_size[1] - self.label_size[1])/2), 0), 'circular'), 
                  CustomPad((0, math.ceil((self.crop_size[0] - self.label_size[0])/2), 0, math.ceil((self.crop_size[0] - self.label_size[0])/2)), 'zero', constant_values=0), 
                  GroupRandomCrop(self.crop_size, label_size=self.label_size), 
