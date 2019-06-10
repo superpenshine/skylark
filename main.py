@@ -34,13 +34,13 @@ def main():
 
     solver = network(config)
     if config.m == 'v':
-        solver.test_single(triplet_id = 60, step_diff = (40, None))
+        solver.test_single(triplet_id = 40, step_diff = (40, None))
         return
     elif config.m == 's':
         save_to_h5(config, trva=True, polar=True)
         return
     elif config.m == 'p':
-        data, grid = load(str(config.h5_dir_win) + "_tr.h5", "sigma_data", 71)
+        data, grid = load(str(config.h5_dir_win) + "_tr.h5", "sigma_data", 71   )
         preview(data, grid, polar=False)
         return
     else:

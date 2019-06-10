@@ -137,8 +137,8 @@ class network(object):
         self.model = ResNet().to(self.device)
         self.optimizer = optim.Adam(self.model.parameters(), lr=self.lr)
         self.scheduler = optim.lr_scheduler.MultiStepLR(self.optimizer, milestones=[75, 150], gamma=0.5)
-        self.criterion = MSELoss(reduction='sum').to(self.device) # set reduction=sum, or too smal to see
-        # self.criterion = L1Loss().to(self.device)
+        # self.criterion = MSELoss(reduction='sum').to(self.device) # set reduction=sum, or too smal to see
+        self.criterion = L1Loss(reduction='sum').to(self.device)
 
 
     def sanity_check_randcrop(self):
@@ -575,6 +575,7 @@ class network(object):
         self.load_writer()
         crop = Crop((0, 0), (440, 1024))
         normalize = Normalize()
+        resize = Resize((55, 128))
         pad = transforms.Compose([CustomPad((math.ceil((self.crop_size[1] - self.label_size[1])/2), 0, math.ceil((self.crop_size[1] - self.label_size[1])/2), 0), 'circular'), 
                                   CustomPad((0, math.ceil((self.crop_size[0] - self.label_size[0])/2), 0, math.ceil((self.crop_size[0] - self.label_size[0])/2)), 'zero', constant_values=0)])
         to_tensor = ToTensor()
@@ -591,16 +592,16 @@ class network(object):
                             verbose = True) # RandomCrop is group op
 
         # Fetch triplets and transform
-        i0, i1, label, info_dict = data_tr[triplet_id]
+        i0, i1, label, info_dict = data_va[triplet_id]
         i0 = crop(i0)
         i1 = crop(i1)
         label = crop(label)
         i0 = normalize(i0)
         i1 = normalize(i1)
         label = normalize(label)
-        i0 = cv2.resize(i0, dsize=(55, 128), interpolation=cv2.INTER_LINEAR)
-        i1 = cv2.resize(i1, dsize=(55, 128), interpolation=cv2.INTER_LINEAR)
-        label = cv2.resize(label, dsize=(55, 128), interpolation=cv2.INTER_LINEAR)
+        i0 = resize(i0)
+        i1 = resize(i1)
+        label = resize(label)
         # # For Square input
         # i0 = cv2.resize(i0, dsize=self.input_size, interpolation=cv2.INTER_LINEAR)
         # i1 = cv2.resize(i1, dsize=self.input_size, interpolation=cv2.INTER_LINEAR)

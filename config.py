@@ -42,7 +42,7 @@ sys_arg.add_argument("--h5_dir_linux", type=Path,
                     help="Linux data file without the .h5 suffix")
 
 sys_arg.add_argument("--min_step_diff", type=int,
-                    default=40,
+                    default=None,
                     help="None or an integer indicating min step difference")
 
 sys_arg.add_argument("--max_step_diff", type=int,
