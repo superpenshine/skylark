@@ -84,7 +84,7 @@ class Resize(object):
         '''
         size: HxW
         '''
-        self.size = (size[0], size[1]) # Convert to WxH
+        self.size = (size[1], size[0]) # Cv2 uses WxH
         self.interpolation = interpolation
 
     def __call__(self, img):
