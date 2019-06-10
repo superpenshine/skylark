@@ -1,5 +1,6 @@
 # main file
 
+import sys
 from config import get_config, print_usage
 # from network_tf import nn
 from network_pt import network
@@ -23,19 +24,29 @@ def main():
     # preview_raw(config, 'D:/sigma_data/sigma_data0150.bin', config.data_dir / config.f_gird, polar=False, var=1)
     # save_to_h5(config, trva=True, polar=True)
     
-    # data, grid = load(str(config.h5_dir) + "_tr.h5", "sigma_data", 10)
+    # data, grid = load(str(config.h5_dir_win) + "_tr.h5", "sigma_data", 71)
     # preview(data, grid, polar=False)
     # test(data, grid)
 
+    # Test for TF network
     # network = nn(config)
     # network.load_img_on_tb(data, grid)
 
     solver = network(config)
-    solver.run()
-    # solver.test_single(triplet_id = 40)
+    if config.m == 'v':
+        solver.test_single(triplet_id = 60, step_diff = (40, None))
+        return
+    elif config.m == 's':
+        save_to_h5(config, trva=True, polar=True)
+        return
+    elif config.m == 'p':
+        data, grid = load(str(config.h5_dir_win) + "_tr.h5", "sigma_data", 71)
+        preview(data, grid, polar=False)
+        return
+    else:
+        solver.run()
     # solver.sanity_check_randcrop()
     # solver.sanity_check_no_randcrop()
-    # solver.test_full()
 
 
 if __name__ == "__main__":

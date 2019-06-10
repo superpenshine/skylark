@@ -81,7 +81,10 @@ class Resize(object):
     Take ndarray as input
     '''
     def __init__(self, size, interpolation=cv2.INTER_LINEAR):
-        self.size = size
+        '''
+        size: HxW
+        '''
+        self.size = (size[0], size[1]) # Convert to WxH
         self.interpolation = interpolation
 
     def __call__(self, img):
@@ -114,6 +117,25 @@ class LogPolartoPolar(object):
         return polar_data
 
 
+class Normalize(object):
+    '''
+    Normalize img values channel-wise
+    '''
+    def __call__(self, img):
+        '''
+        img: ndarray in HWC
+        '''
+        n_chan = img.shape[-1]
+        for c_i in range(n_chan):
+            c_max = np.amax(img[:,:,c_i])
+            c_min = np.amin(img[:,:,c_i])
+            img[:,:,c_i] = img[:,:,c_i] / (c_max - c_min) - 0.5
+
+        # return (img * 255).astype(np.uint8)
+
+        return img
+
+
 class ToTensor(object):
     '''
     Convet numpy array to tensor
@@ -124,6 +146,30 @@ class ToTensor(object):
             raise TypeError("Custom ToTensor takes numpy array as input")
 
         return torch.from_numpy(np.transpose(img, (2, 0, 1)))
+
+
+class Crop(object):
+    '''
+    Crop image
+    '''
+    def __init__(self, top_left, size):
+        '''
+        tl: top left conner
+        size: output img size of HxW
+        '''
+        self.tl = top_left
+        self.br = (top_left[0] + size[0], top_left[1] + size[1])
+        self.size = size
+
+    def __call__(self, img):
+        '''
+        img: ndarray
+        '''
+        h, w = img.shape[:-1]
+        if self.br[0] > h or self.br[1] > w:
+            raise ValueError("Impossible to crop form input img of size {h}x{w}".format())
+
+        return img[self.tl[0]:self.br[0], self.tl[1]:self.br[1]]
 
 
 class GroupRandomCrop(object):

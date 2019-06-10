@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 
 from model import ResNet18, ResNet
 from pathlib import Path
-from util.transform import CustomPad, GroupRandomCrop, ToTensor, Resize, LogPolartoPolar
+from util.transform import CustomPad, GroupRandomCrop, ToTensor, Resize, LogPolartoPolar, Normalize, Crop
 from dataset.Astrodata import Astrodata
 
 import torch
@@ -67,12 +67,25 @@ class network(object):
         '''
         Prepare train/test data
         '''
-        trans = [Resize((self.input_size)), 
-                 # LogPolartoPolar(), # Use polar data instead, too expensive
+        trans = [
+                 Crop((0, 0), (440, 1024)), # should be 439x1024
+                 Normalize(),
+                 Resize((55, 128)),
+                 LogPolartoPolar(), # Use polar data instead, too expensive
                  CustomPad((math.ceil((self.crop_size[1] - self.label_size[1])/2), 0, math.ceil((self.crop_size[1] - self.label_size[1])/2), 0), 'circular'), 
                  CustomPad((0, math.ceil((self.crop_size[0] - self.label_size[0])/2), 0, math.ceil((self.crop_size[0] - self.label_size[0])/2)), 'zero', constant_values=0), 
                  GroupRandomCrop(self.crop_size, label_size=self.label_size), 
                  ToTensor()
+
+                 # # For square input
+                 # Normalize(),
+                 # Resize((self.input_size)), 
+                 # # LogPolartoPolar(), # Use polar data instead, too expensive
+                 # CustomPad((math.ceil((self.crop_size[1] - self.label_size[1])/2), 0, math.ceil((self.crop_size[1] - self.label_size[1])/2), 0), 'circular'), 
+                 # CustomPad((0, math.ceil((self.crop_size[0] - self.label_size[0])/2), 0, math.ceil((self.crop_size[0] - self.label_size[0])/2)), 'zero', constant_values=0), 
+                 # GroupRandomCrop(self.crop_size, label_size=self.label_size), 
+                 # ToTensor()
+
                  # transforms.ToPILImage(), 
                  # transforms.Resize((128, 128)), # Requires PIL image
                  # transforms.Pad((64, 0, 64, 0), 'constant'), # only supports RGB
@@ -260,6 +273,9 @@ class network(object):
 
 
     def sanity_check_no_randcrop(self):
+        '''
+        Sanity check without random crop
+        '''
         self.load_writer()
         self.load_model()
 
@@ -397,6 +413,7 @@ class network(object):
         '''
         print("\ntrain:")
         self.model.train()
+        # pdb.set_trace()
 
         for b_id, (i0, i1, label) in enumerate(self.train_loader):
             # # Convert to tensor
@@ -540,15 +557,24 @@ class network(object):
             os.remove(self.checkpoint)
 
 
-    def test_single(self, triplet_id = None):
+    def test_single(self, triplet_id = None, step_diff = None):
         '''
-        Test the model using single inputj, for illustration
+        Visualize using trained model
+        triplet_id: triplet index to use, default will be random
+        step_diff: a tuple of (min_step_diff, max_step_diff)
         '''
         var = 1
         n_row = 5
+        # Randomly choose triplet if not given
+        if not triplet_id:
+            triplet_id = np.random.randint(0, len(data_tr)-1)
+        if step_diff:
+            self.min_step_diff = step_diff[0]
+            self.max_step_diff = step_diff[1]
 
         self.load_writer()
-
+        crop = Crop((0, 0), (440, 1024))
+        normalize = Normalize()
         pad = transforms.Compose([CustomPad((math.ceil((self.crop_size[1] - self.label_size[1])/2), 0, math.ceil((self.crop_size[1] - self.label_size[1])/2), 0), 'circular'), 
                                   CustomPad((0, math.ceil((self.crop_size[0] - self.label_size[0])/2), 0, math.ceil((self.crop_size[0] - self.label_size[0])/2)), 'zero', constant_values=0)])
         to_tensor = ToTensor()
@@ -564,23 +590,34 @@ class network(object):
                             rtn_log_grid = False, 
                             verbose = True) # RandomCrop is group op
 
-        # Normalized triplet without transform
-        if not triplet_id:
-            triplet_id = np.random.randint(0, len(data_tr)-1)
-        i0, i1, label = data_tr[triplet_id]
-        i0 = cv2.resize(i0, dsize=self.input_size, interpolation=cv2.INTER_LINEAR)
-        i1 = cv2.resize(i1, dsize=self.input_size, interpolation=cv2.INTER_LINEAR)
-        label = cv2.resize(label, dsize=self.input_size, interpolation=cv2.INTER_LINEAR)
-        i1_label_sized = i1
-        self.writer.add_images('triplet', np.expand_dims(np.stack([i0[:,:,var], label[:,:,var], i1[:,:,var]]), 3), dataformats='NHWC')
+        # Fetch triplets and transform
+        i0, i1, label, info_dict = data_tr[triplet_id]
+        i0 = crop(i0)
+        i1 = crop(i1)
+        label = crop(label)
+        i0 = normalize(i0)
+        i1 = normalize(i1)
+        label = normalize(label)
+        i0 = cv2.resize(i0, dsize=(55, 128), interpolation=cv2.INTER_LINEAR)
+        i1 = cv2.resize(i1, dsize=(55, 128), interpolation=cv2.INTER_LINEAR)
+        label = cv2.resize(label, dsize=(55, 128), interpolation=cv2.INTER_LINEAR)
+        # # For Square input
+        # i0 = cv2.resize(i0, dsize=self.input_size, interpolation=cv2.INTER_LINEAR)
+        # i1 = cv2.resize(i1, dsize=self.input_size, interpolation=cv2.INTER_LINEAR)
+        # label = cv2.resize(label, dsize=self.input_size, interpolation=cv2.INTER_LINEAR)
 
+        # self.writer.add_images('triplet', np.expand_dims(np.stack([i0[:,:,var], label[:,:,var], i1[:,:,var]]), 3), dataformats='NHWC')
+        self.writer.add_images('i0', i0[:,:,var], dataformats='HW')
+        self.writer.add_images('label', label[:,:,var], dataformats='HW')
+        self.writer.add_images('i1', i1[:,:,var], dataformats='HW')
         i0 = pad(i0)
-        i1 = pad(i1)
+        i1_padded = pad(i1)
         i0 = to_tensor(i0)
+        i1_padded = to_tensor(i1_padded)
         i1 = to_tensor(i1)
         label = to_tensor(label)
-        i1_label_sized = to_tensor(i1_label_sized)
 
+        # Setup network
         device = torch.device('cpu')
         if Path(self.model_dir).exists():
             self.load(map_location=device)
@@ -592,25 +629,25 @@ class network(object):
             self.criterion = L1Loss().to(device)
             self.load_checkpoint()
 
+        # Run the network with input
         self.model.eval()
         with torch.no_grad():
-            duo = torch.cat([i0, i1], dim=0)
+            duo = torch.cat([i0, i1_padded], dim=0)
             duo = torch.unsqueeze(duo, 0)
             output = self.model(duo)
-            out = output[0] + i1_label_sized
+            out = output[0] + i1
             residue = out - label
-            original_diff = i1_label_sized - label
+            original_diff = i1 - label
 
+        # Visualize and add to summary
         out = out[var]
         label = label[var]
         residue = residue[var]
         original_diff = original_diff[var]
-        i1_label_sized = i1_label_sized[var]
-        # pdb.set_trace()
+        i1 = i1[var]
         self.writer.add_image('residue', (residue + torch.min(residue)) / (torch.max(residue) - torch.min(residue)), dataformats='HW')
         self.writer.add_image('synthetic', out, dataformats='HW')
-        self.writer.add_image('i1_centercrop', i1_label_sized, dataformats='HW')
-
+        self.writer.add_image('i1_centercrop', i1, dataformats='HW')
         # default dpi 6.4, 4.8
         # plt.figure(figsize=(20, 4), dpi=200)
         plt.subplot(241)
@@ -623,9 +660,9 @@ class network(object):
         plt.colorbar()
         plt.subplot(243)
         plt.title('i1_cropped')
-        plt.imshow(i1_label_sized)
+        plt.imshow(i1)
         plt.colorbar()
-
+        # Calculate max/min of resudue & original difference together
         vmax = max(torch.max(residue), torch.max(original_diff))
         vmin = min(torch.min(residue), torch.min(original_diff))
         plt.subplot(244)
@@ -637,7 +674,10 @@ class network(object):
         plt.imshow(original_diff, vmin = vmin, vmax = vmax)
         plt.colorbar()
 
-        plt.show()
         # plt.savefig("a.png")
+        print("triplet id: ", triplet_id)
+        print("disk name: ", info_dict["disk_name"])
+        print("Image_t0_idx: {}, Image_t1_idx: {}, label_idx: {}".format(info_dict["img1_idx"], info_dict["img2_idx"], info_dict["label_idx"]))
         print("Residue sum: ", torch.sum(torch.abs(residue)))
-        print("original diff: ", torch.sum(torch.abs(original_diff)))
+        print("Original diff: ", torch.sum(torch.abs(original_diff)))
+        plt.show()

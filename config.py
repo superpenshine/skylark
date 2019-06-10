@@ -19,6 +19,13 @@ def add_argument_group(name):
 sys_arg = add_argument_group("Data")
 
 # Params you want to change for local system uses
+sys_arg.add_argument("-m", type=str,
+                    default=None,
+                    help='''Running mode, 
+                    v: for visulization
+                    s: for save to h5py
+                    p: for preview''')
+
 sys_arg.add_argument("--data_dir", type=Path,
                     default='D:/sigma_data',
                     # default='/home/sht/data/sigma_data',
@@ -33,6 +40,26 @@ sys_arg.add_argument("--h5_dir_linux", type=Path,
                     # default='/home/sht/data/sigma_data/data_polar', 
                     default='/home/sht/data/sigma_data/data_logpolar', 
                     help="Linux data file without the .h5 suffix")
+
+sys_arg.add_argument("--min_step_diff", type=int,
+                    default=40,
+                    help="None or an integer indicating min step difference")
+
+sys_arg.add_argument("--max_step_diff", type=int,
+                    default=None,
+                    help="None or an integer indicating max step difference")
+
+sys_arg.add_argument("--batch_size", type=int,
+                    default=2,
+                    help="Batch size")
+
+sys_arg.add_argument("--lr", type=float,
+                    default=0.0001,
+                    help="Learning rate")
+
+sys_arg.add_argument("--epochs", type=int,
+                    default=20,
+                    help="Number of epochs")
 
 sys_arg.add_argument("--f_gird", type=Path,
                     default='log_grid.dat',
@@ -54,14 +81,6 @@ sys_arg.add_argument("--valid_size", type=float,
                     default=0.2,
                     help="Validation sample percentage (<=1.0)")
 
-sys_arg.add_argument("--min_step_diff", type=int,
-                    default=None,
-                    help="None or an integer indicating min step difference")
-
-sys_arg.add_argument("--max_step_diff", type=int,
-                    default=None,
-                    help="None or an integer indicating max step difference")
-
 sys_arg.add_argument("--input_size", type=tuple, 
                     default=(64, 64), 
                     help="Input image size")
@@ -73,18 +92,6 @@ sys_arg.add_argument("--crop_size", type=tuple,
 sys_arg.add_argument("--label_size", type=tuple, 
                     default=(16, 16), 
                     help="Label image size")
-
-sys_arg.add_argument("--batch_size", type=int,
-                    default=15,
-                    help="Batch size")
-
-sys_arg.add_argument("--lr", type=float,
-                    default=0.0001,
-                    help="Learning rate")
-
-sys_arg.add_argument("--epochs", type=int,
-                    default=20,
-                    help="Number of epochs")
 
 sys_arg.add_argument("--checkpoint_freq", type=int, 
                     default=1, 

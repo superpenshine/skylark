@@ -9,7 +9,7 @@ import numpy as np
 from pathlib import Path
 from functools import partial
 from scipy.ndimage import geometric_transform, map_coordinates
-from util.transform import LogPolartoPolar
+from util.transform import LogPolartoPolar, Crop
 
 # Change backend for Mac users
 if platform.system() == "Darwin":
@@ -180,7 +180,8 @@ def preview(data, log_grid, polar = False, var = 1):
     polar_data = map_coordinates(data[:,:,var], (rp2, rp1))
     # Looping over pixels, SLOW!
     # polar_data = geometric_transform(data[:,:,var], partial(logpolar_to_polar, expand(log_grid, nx)))
-    plt.imshow(data[:,:,1])
+    crop = Crop((0, 0), (439, 1024))
+    plt.imshow(crop(data[:,:,var]))
 
     # Show in polar coords using pcolormesh
     # rp1, rp2 = np.meshgrid(theta, log_grid)

@@ -41,14 +41,9 @@ class Astrodata(Dataset):
         '''
         d, l_id, h_id, m_id = self.mapping(idx)
         # print(d, l, h, m)
-        l = self.data[d][str(l_id)]
-        h = self.data[d][str(h_id)]
-        m = self.data[d][str(m_id)]
-
-        # Transform to uint8 0-255, required by PIL module
-        l = self.normalize(np.array(l))
-        h = self.normalize(np.array(h))
-        m = self.normalize(np.array(m))
+        l = np.array(self.data[d][str(l_id)])
+        h = np.array(self.data[d][str(h_id)])
+        m = np.array(self.data[d][str(m_id)])
 
         # Apply transforms
         if self.transforms:
@@ -70,40 +65,25 @@ class Astrodata(Dataset):
                 h = transform(h)
                 m = transform(m)
 
-        # Verbose mode, print disk and triplets index
-        if self.verbose:
-            print("triplets id: ", idx)
-            print("disk name: ", d)
-            print("Image_t0_idx: {}, Image_t1_idx: {}, label_idx: {}".format(l_id, h_id, m_id))
-
+        ret = []
         if self.rtn_log_grid:
             log_grid = np.asarray(self.data[d]["log_grid"])
-            return log_grid, l, h, m
-
-        return l, h, m
+            ret.append(log_grid)
+        ret.extend([l, h, m])
+        # Verbose mode, return disk name, img indexes
+        if self.verbose:
+            ret.append({"disk_name": d, 
+                        "img1_idx": l_id, 
+                        "img2_idx": h_id, 
+                        "label_idx": m_id})
+        # import pdb
+        # pdb.set_trace()
+        return ret
 
 
     def __len__(self):
         # Total number of triplets: 0.25n^2-0.25n-int(0.5n)0.5
         return sum(self.d_bounds)
-
-
-    def normalize(self, ndarray):
-        '''
-        Normalize the ndarray's all channels to 0-255
-        ndarray: numpy array in HWC
-        '''
-        n_chan = ndarray.shape[-1]
-        # import pdb
-        # pdb.set_trace()
-        for c_i in range(n_chan):
-            c_max = np.amax(ndarray[:,:,c_i])
-            c_min = np.amin(ndarray[:,:,c_i])
-            ndarray[:,:,c_i] = ndarray[:,:,c_i] / (c_max - c_min) - 0.5
-
-        # return (ndarray * 255).astype(np.uint8)
-        return ndarray
-
 
 
     def mapping(self, idx):
