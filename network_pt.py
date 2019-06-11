@@ -138,8 +138,8 @@ class network(object):
         self.model = ResNet().to(self.device)
         self.optimizer = optim.Adam(self.model.parameters(), lr=self.lr)
         self.scheduler = optim.lr_scheduler.MultiStepLR(self.optimizer, milestones=[75, 150], gamma=0.5)
-        # self.criterion = MSELoss().to(self.device) # set reduction=sum, or too smal to see
-        self.criterion = L1Loss().to(self.device)
+        self.criterion = MSELoss().to(self.device) # set reduction=sum, or too smal to see
+        # self.criterion = L1Loss().to(self.device)
 
 
     def sanity_check_randcrop(self):
