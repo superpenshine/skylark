@@ -68,24 +68,24 @@ class network(object):
         Prepare train/test data
         '''
         trans = [
-                 # # For Cropped input
-                 # Crop((0, 0), (440, 1024)), # should be 439x1024
-                 # Normalize(),
-                 # Resize((55, 128)),
-                 # # LogPolartoPolar(), # Use polar data instead, too expensive
-                 # CustomPad((math.ceil((self.crop_size[1] - self.label_size[1])/2), 0, math.ceil((self.crop_size[1] - self.label_size[1])/2), 0), 'circular'), 
-                 # CustomPad((0, math.ceil((self.crop_size[0] - self.label_size[0])/2), 0, math.ceil((self.crop_size[0] - self.label_size[0])/2)), 'zero', constant_values=0), 
-                 # GroupRandomCrop(self.crop_size, label_size=self.label_size), 
-                 # ToTensor()
-
-                 # For square input
+                 # For Cropped input
+                 Crop((0, 0), (440, 1024)), # should be 439x1024
                  Normalize(),
-                 Resize((self.input_size)), 
+                 Resize((55, 128)),
                  # LogPolartoPolar(), # Use polar data instead, too expensive
                  CustomPad((math.ceil((self.crop_size[1] - self.label_size[1])/2), 0, math.ceil((self.crop_size[1] - self.label_size[1])/2), 0), 'circular'), 
                  CustomPad((0, math.ceil((self.crop_size[0] - self.label_size[0])/2), 0, math.ceil((self.crop_size[0] - self.label_size[0])/2)), 'zero', constant_values=0), 
                  GroupRandomCrop(self.crop_size, label_size=self.label_size), 
                  ToTensor()
+
+                 # # For square input
+                 # Normalize(),
+                 # Resize((self.input_size)), 
+                 # # LogPolartoPolar(), # Use polar data instead, too expensive
+                 # CustomPad((math.ceil((self.crop_size[1] - self.label_size[1])/2), 0, math.ceil((self.crop_size[1] - self.label_size[1])/2), 0), 'circular'), 
+                 # CustomPad((0, math.ceil((self.crop_size[0] - self.label_size[0])/2), 0, math.ceil((self.crop_size[0] - self.label_size[0])/2)), 'zero', constant_values=0), 
+                 # GroupRandomCrop(self.crop_size, label_size=self.label_size), 
+                 # ToTensor()
 
                  # transforms.ToPILImage(), 
                  # transforms.Resize((128, 128)), # Requires PIL image
@@ -574,12 +574,6 @@ class network(object):
             self.max_step_diff = step_diff[1]
 
         self.load_writer()
-        crop = Crop((0, 0), (440, 1024))
-        normalize = Normalize()
-        resize = Resize((55, 128))
-        pad = transforms.Compose([CustomPad((math.ceil((self.crop_size[1] - self.label_size[1])/2), 0, math.ceil((self.crop_size[1] - self.label_size[1])/2), 0), 'circular'), 
-                                  CustomPad((0, math.ceil((self.crop_size[0] - self.label_size[0])/2), 0, math.ceil((self.crop_size[0] - self.label_size[0])/2)), 'zero', constant_values=0)])
-        to_tensor = ToTensor()
         data_tr = Astrodata(self.tr_data_dir, 
                             min_step_diff = self.min_step_diff, 
                             max_step_diff = self.max_step_diff, 
@@ -594,26 +588,34 @@ class network(object):
 
         # Fetch triplets and transform
         i0, i1, label, info_dict = data_va[triplet_id]
+
+        crop = Crop((0, 0), (440, 1024))
         i0 = crop(i0)
         i1 = crop(i1)
         label = crop(label)
+
+        normalize = Normalize()
         i0 = normalize(i0)
         i1 = normalize(i1)
         label = normalize(label)
+
+        resize = Resize((55, 128))
+        # resize = Resize((32, 32))
         i0 = resize(i0)
         i1 = resize(i1)
         label = resize(label)
-        # # For Square input
-        # i0 = cv2.resize(i0, dsize=self.input_size, interpolation=cv2.INTER_LINEAR)
-        # i1 = cv2.resize(i1, dsize=self.input_size, interpolation=cv2.INTER_LINEAR)
-        # label = cv2.resize(label, dsize=self.input_size, interpolation=cv2.INTER_LINEAR)
 
         # self.writer.add_images('triplet', np.expand_dims(np.stack([i0[:,:,var], label[:,:,var], i1[:,:,var]]), 3), dataformats='NHWC')
         self.writer.add_images('i0', i0[:,:,var], dataformats='HW')
         self.writer.add_images('label', label[:,:,var], dataformats='HW')
         self.writer.add_images('i1', i1[:,:,var], dataformats='HW')
+
+        pad = transforms.Compose([CustomPad((math.ceil((self.crop_size[1] - self.label_size[1])/2), 0, math.ceil((self.crop_size[1] - self.label_size[1])/2), 0), 'circular'), 
+                          CustomPad((0, math.ceil((self.crop_size[0] - self.label_size[0])/2), 0, math.ceil((self.crop_size[0] - self.label_size[0])/2)), 'zero', constant_values=0)])
         i0 = pad(i0)
         i1_padded = pad(i1)
+
+        to_tensor = ToTensor()
         i0 = to_tensor(i0)
         i1_padded = to_tensor(i1_padded)
         i1 = to_tensor(i1)

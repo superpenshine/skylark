@@ -40,7 +40,7 @@ def main():
         save_to_h5(config, trva=True, polar=True)
         return
     elif config.m == 'p':
-        data, grid = load(str(config.h5_dir_win) + "_tr.h5", "sigma_data", 71   )
+        data, grid = load(str(config.h5_dir_win) + "_tr.h5", "sigma_data", 71)
         preview(data, grid, polar=False)
         return
     else:

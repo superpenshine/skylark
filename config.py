@@ -82,18 +82,18 @@ sys_arg.add_argument("--valid_size", type=float,
                     help="Validation sample percentage (<=1.0)")
 
 sys_arg.add_argument("--input_size", type=tuple, 
-                    # default=(64, 64), 
-                    default=(32, 32), 
+                    default=(64, 64), 
+                    # default=(32, 32), 
                     help="Input image size")
 
 sys_arg.add_argument("--crop_size", type=tuple, 
-                    # default=(32, 32), 
-                    default=(24, 24),
+                    default=(32, 32), 
+                    # default=(24, 24),
                     help="Input image size")
 
 sys_arg.add_argument("--label_size", type=tuple, 
-                    # default=(16, 16),
-                    default=(8, 8), 
+                    default=(16, 16),
+                    # default=(8, 8), 
                     help="Label image size")
 
 sys_arg.add_argument("--checkpoint_freq", type=int, 
