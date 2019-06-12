@@ -68,24 +68,24 @@ class network(object):
         Prepare train/test data
         '''
         trans = [
-                 # For Cropped input
-                 Crop((0, 0), (440, 1024)), # should be 439x1024
-                 Normalize(),
-                 Resize((55, 128)),
-                 # LogPolartoPolar(), # Use polar data instead, too expensive
-                 CustomPad((math.ceil((self.crop_size[1] - self.label_size[1])/2), 0, math.ceil((self.crop_size[1] - self.label_size[1])/2), 0), 'circular'), 
-                 CustomPad((0, math.ceil((self.crop_size[0] - self.label_size[0])/2), 0, math.ceil((self.crop_size[0] - self.label_size[0])/2)), 'zero', constant_values=0), 
-                 GroupRandomCrop(self.crop_size, label_size=self.label_size), 
-                 ToTensor()
-
-                 # # For square input
+                 # # For Cropped input
+                 # Crop((0, 0), (440, 1024)), # should be 439x1024
                  # Normalize(),
-                 # Resize((self.input_size)), 
+                 # Resize((55, 128)),
                  # # LogPolartoPolar(), # Use polar data instead, too expensive
                  # CustomPad((math.ceil((self.crop_size[1] - self.label_size[1])/2), 0, math.ceil((self.crop_size[1] - self.label_size[1])/2), 0), 'circular'), 
                  # CustomPad((0, math.ceil((self.crop_size[0] - self.label_size[0])/2), 0, math.ceil((self.crop_size[0] - self.label_size[0])/2)), 'zero', constant_values=0), 
                  # GroupRandomCrop(self.crop_size, label_size=self.label_size), 
                  # ToTensor()
+
+                 # For square input
+                 Normalize(),
+                 Resize((self.input_size)), 
+                 # LogPolartoPolar(), # Use polar data instead, too expensive
+                 CustomPad((math.ceil((self.crop_size[1] - self.label_size[1])/2), 0, math.ceil((self.crop_size[1] - self.label_size[1])/2), 0), 'circular'), 
+                 CustomPad((0, math.ceil((self.crop_size[0] - self.label_size[0])/2), 0, math.ceil((self.crop_size[0] - self.label_size[0])/2)), 'zero', constant_values=0), 
+                 GroupRandomCrop(self.crop_size, label_size=self.label_size), 
+                 ToTensor()
 
                  # transforms.ToPILImage(), 
                  # transforms.Resize((128, 128)), # Requires PIL image
