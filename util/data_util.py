@@ -167,7 +167,7 @@ def preview(data, log_grid, polar = False, var = 1):
     var:  0 -- gas
           1 -- dust for size 0.01cm
           2 -- dust for size 0.1cm
-          3 -- dust for size 0.001cm.
+          3 -- dust for size 0.001cm
 
     '''
     # fig = plt.figure()

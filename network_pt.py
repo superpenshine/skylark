@@ -589,21 +589,16 @@ class network(object):
         # Fetch triplets and transform
         i0, i1, label, info_dict = data_va[triplet_id]
 
-        crop = Crop((0, 0), (440, 1024))
-        i0 = crop(i0)
-        i1 = crop(i1)
-        label = crop(label)
+        tran_before_pad = transforms.Compose([
+                                              # Crop((0, 0), (440, 1024)), 
+                                              Normalize(), 
+                                              # Resize((55, 128)), 
+                                              Resize((32, 32)), 
+                                              ])
 
-        normalize = Normalize()
-        i0 = normalize(i0)
-        i1 = normalize(i1)
-        label = normalize(label)
-
-        resize = Resize((55, 128))
-        # resize = Resize((32, 32))
-        i0 = resize(i0)
-        i1 = resize(i1)
-        label = resize(label)
+        i0 = tran_before_pad(i0)
+        i1 = tran_before_pad(i1)
+        label = tran_before_pad(label)
 
         # self.writer.add_images('triplet', np.expand_dims(np.stack([i0[:,:,var], label[:,:,var], i1[:,:,var]]), 3), dataformats='NHWC')
         self.writer.add_images('i0', i0[:,:,var], dataformats='HW')
@@ -611,7 +606,7 @@ class network(object):
         self.writer.add_images('i1', i1[:,:,var], dataformats='HW')
 
         pad = transforms.Compose([CustomPad((math.ceil((self.crop_size[1] - self.label_size[1])/2), 0, math.ceil((self.crop_size[1] - self.label_size[1])/2), 0), 'circular'), 
-                          CustomPad((0, math.ceil((self.crop_size[0] - self.label_size[0])/2), 0, math.ceil((self.crop_size[0] - self.label_size[0])/2)), 'zero', constant_values=0)])
+                                  CustomPad((0, math.ceil((self.crop_size[0] - self.label_size[0])/2), 0, math.ceil((self.crop_size[0] - self.label_size[0])/2)), 'zero', constant_values=0)])
         i0 = pad(i0)
         i1_padded = pad(i1)
 
@@ -670,11 +665,15 @@ class network(object):
         vmax = max(torch.max(residue), torch.max(original_diff))
         vmin = min(torch.min(residue), torch.min(original_diff))
         plt.subplot(244)
-        plt.title('Out-GT')
+        plt.title('Out-GT(rescaled)')
         plt.imshow(residue, vmin = vmin, vmax = vmax)
         plt.colorbar()
+        plt.subplot(247)
+        plt.title('Out-GT')
+        plt.imshow(residue)
+        plt.colorbar()
         plt.subplot(248)
-        plt.title('i1_cropped-GT')
+        plt.title('i1_cropped-GT(rescaled)')
         plt.imshow(original_diff, vmin = vmin, vmax = vmax)
         plt.colorbar()
 
