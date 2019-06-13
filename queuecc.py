@@ -196,6 +196,7 @@ def main(config):
 
     # Get jobs that this new job should depend on.
     job_depends = []
+    print("key", config.depends_key)
     if config.depends_key != "none":
         squeue_res = subprocess.run(
             ["squeue", "-u", username],
