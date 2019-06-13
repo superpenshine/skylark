@@ -246,7 +246,8 @@ def main(config):
             com += ["--account={}".format(config.account)]
             com += ["--output={}/%x-%j.out".format(config.output_dir)]
             com += ["--export=ALL"]
-            com += [os.path.join(config.done_dir, job_script)]
+            # com += [os.path.join(config.done_dir, job_script)]
+            com += [os.path.join(config.todo_dir, job_script)]
             print('Command: ', com)
             slurm_res = subprocess.run(com, stdout=subprocess.PIPE)
             print(slurm_res.stdout.decode())
