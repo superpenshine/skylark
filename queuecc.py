@@ -196,7 +196,6 @@ def main(config):
 
     # Get jobs that this new job should depend on.
     job_depends = []
-    print("key", config.depends_key)
     if config.depends_key != "none":
         squeue_res = subprocess.run(
             ["squeue", "-u", username],
@@ -227,11 +226,11 @@ def main(config):
                 break
         if not found_job:
             raise RuntimeError("No job found in {}".format(config.todo_dir))
-        # Move that job to the done folder
-        shutil.move(
-            os.path.join(config.todo_dir, job_script),
-            os.path.join(config.done_dir, job_script),
-        )
+        # # Move that job to the done folder
+        # shutil.move(
+        #     os.path.join(config.todo_dir, job_script),
+        #     os.path.join(config.done_dir, job_script),
+        # )
         # Build Initial dependency (from the job_depends)
         dep_str = ":".join(job_depends)
         # Run job N times
