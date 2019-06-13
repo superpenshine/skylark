@@ -88,17 +88,17 @@ global_arg.add_argument(
 
 global_arg.add_argument(
     "--todo_dir", type=str,
-    default="~/scratch/skylark/todo",
+    default="/home/sht/scratch/skylark/todo",
     help="Path to directory containing shell scripts to run.")
 
 global_arg.add_argument(
     "--done_dir", type=str,
-    default="~/scratch/skylark/done",
+    default="/home/sht/scratch/skylark/done",
     help="Path to directory that the program will move queued scripts.")
 
 global_arg.add_argument(
     "--output_dir", type=str,
-    default="~/scratch/skylark/output",
+    default="/home/sht/scratch/skylark/output",
     help="Directory that will contain job outputs.")
 
 # ----------------------------------------
