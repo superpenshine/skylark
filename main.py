@@ -1,3 +1,4 @@
+# !/usr/bin/env python3
 # main file
 
 import sys
@@ -36,13 +37,17 @@ def main():
     if config.m == 'v':
         solver.test_single(triplet_id = 40, step_diff = (40, None))
         return
-    elif config.m == 's':
+    elif config.m == 'save':
         save_to_h5(config, trva=True, polar=True)
         return
     elif config.m == 'p':
         data, grid = load(str(config.h5_dir_win) + "_tr.h5", "sigma_data", 71)
         preview(data, grid, polar=False)
         return
+    elif config.m == 'sanity':
+        solver.sanity_check_regular_loss()
+        # solver.sanity_check_randcrop_interpo_loss()
+        # solver.sanity_visualize()
     else:
         solver.run()
     # solver.sanity_check_randcrop()

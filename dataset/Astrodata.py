@@ -76,8 +76,6 @@ class Astrodata(Dataset):
                         "img1_idx": l_id, 
                         "img2_idx": h_id, 
                         "label_idx": m_id})
-        # import pdb
-        # pdb.set_trace()
         return ret
 
 

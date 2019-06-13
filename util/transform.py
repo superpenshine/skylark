@@ -121,19 +121,38 @@ class Normalize(object):
     '''
     Normalize img values channel-wise
     '''
+    def __init__(self, mean=None):
+        self.mean = None
+        if mean:
+            self.mean = mean
+
     def __call__(self, img):
         '''
-        img: ndarray in HWC
+        img: ndarray in HWC, or tensor in CHW
         '''
-        n_chan = img.shape[-1]
-        for c_i in range(n_chan):
-            c_max = np.amax(img[:,:,c_i])
-            c_min = np.amin(img[:,:,c_i])
-            img[:,:,c_i] = img[:,:,c_i] / (c_max - c_min) - 0.5
-
-        # return (img * 255).astype(np.uint8)
-
-        return img
+        if isinstance(img, np.ndarray):
+            n_chan = img.shape[-1]
+            for c_i in range(n_chan):
+                c_max = np.amax(img[:,:,c_i])
+                c_min = np.amin(img[:,:,c_i])
+                if self.mean:
+                    img[:,:,c_i] = (img[:,:,c_i] - c_min) / (c_max - c_min) - self.mean
+                    continue
+                img[:,:,c_i] = (img[:,:,c_i] - c_min) / (c_max - c_min)
+            # return (img * 255).astype(np.uint8)
+            return img
+        elif isinstance(img, torch.Tensor):
+            n_chan = img.shape[0]
+            # Tensor passes a reference
+            ret = img.clone().detach().requires_grad_(False)
+            for c_i in range(n_chan):
+                c_max = torch.max(img[c_i])
+                c_min = torch.min(img[c_i])
+                if self.mean:
+                    ret[c_i] = (ret[c_i] - c_min) / (c_max - c_min) - self.mean
+                    continue
+                ret[c_i] = (ret[c_i] - c_min) / (c_max - c_min)
+            return ret
 
 
 class ToTensor(object):
@@ -214,8 +233,14 @@ class GroupRandomCrop(object):
         Return i, j
         i, j: coordinates of upper left conner
         '''
-        i = np.random.randint(0, h - self.size[0])
-        j = np.random.randint(0, h - self.size[1])
+        if h == self.size[0]:
+            i = 0
+        else:
+            i = np.random.randint(0, h - self.size[0])
+        if w == self.size[1]:
+            j = 0
+        else:
+            j = np.random.randint(0, w - self.size[1])
 
         return i, j
 
@@ -239,7 +264,8 @@ class GroupRandomCrop(object):
         if self.size[0] > h or self.size[1] > w:
             raise ValueError(
                 "Crop output size {}x{} must be <= {}x{}, or pad more first".format(self.size[0], self.size[1], h, w))
-
+        # import pdb
+        # pdb.set_trace()
         i, j = self.get_params(h, w)
         if not self.numpy_mode:
             return low.crop((j, i, j+self.size[1], i+self.size[0])), \
@@ -249,7 +275,6 @@ class GroupRandomCrop(object):
         return low[i:i+self.size[0], j:j+self.size[1]], \
         high[i:i+self.size[0], j:j+self.size[1]], \
         mid[i+self.inner_pad_size[0]:i+self.inner_pad_size[0]+self.label_size[0], j+self.inner_pad_size[1]:j+self.inner_pad_size[1]+self.label_size[1]]
-
 
     def __repr__(self):
         return self.__class__.__name__ + '(size={0}, label_size={})'.format(self.size, self.label_size)
