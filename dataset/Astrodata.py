@@ -12,7 +12,11 @@ class Astrodata(Dataset):
 
     def __init__(self, data_dir, min_step_diff = None, max_step_diff = None, rtn_log_grid = False, transforms = None, verbose = False):
         '''
-        transform: transformations to apply on imgs
+        transforms: transformations to apply on imgs
+        data_dir: directory to .h5 file
+        min_step_diff, max_step_diff: min/max step difference
+        rtn_log_grid: return log_grid or not
+        verbose: print out debug info
         '''
         # self.data = h5py.File(data_dir, 'r')
         self.data_dir = data_dir

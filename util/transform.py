@@ -84,7 +84,10 @@ class Resize(object):
         '''
         size: HxW
         '''
-        self.size = (size[1], size[0]) # Cv2 uses WxH
+        if isinstance(size, (tuple, list)):
+            self.size = (size[1], size[0]) # Cv2 uses WxH
+        if isinstance(size, int):
+            self.size = (size, size)
         self.interpolation = interpolation
 
     def __call__(self, img):

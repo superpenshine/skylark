@@ -8,8 +8,8 @@ import numpy as np
 
 from pathlib import Path
 from functools import partial
-from scipy.ndimage import geometric_transform, map_coordinates
-from util.transform import LogPolartoPolar, Crop
+# from scipy.ndimage import geometric_transform, map_coordinatesl
+from util.transform import LogPolartoPolar, Resize
 
 # Change backend for Mac users
 if platform.system() == "Darwin":
@@ -35,12 +35,12 @@ def get_ny(data, log_grid, nvar):
     return int(div)
 
 
-def save_to_h5(config, polar = False, trva=None):
+def save_to_h5(config, polar = False, size = None, trva=None):
     '''
     Save data to one huge .h5 file of structure:
         dataset: [n_disk, n_steps, nx, ny, nvar]
     trva: split to train/valid data or not
-
+    polar: transfer data to polar coords
     nvar: [nx, ny, 0] -- gas
           [nx, ny, 1] -- dust for size 0.01cm
           [nx, ny, 2] -- dust for size 0.1cm
@@ -49,6 +49,8 @@ def save_to_h5(config, polar = False, trva=None):
     file_pattern = config.pattern
     if polar:
         toPolar = LogPolartoPolar()
+    if size: 
+        resize = Resize(size)
     if trva:
         out_tr = h5py.File(Path(str(config.h5_dir) + "_tr.h5"))
         out_va = h5py.File(Path(str(config.h5_dir) + "_va.h5"))
@@ -98,6 +100,8 @@ def save_to_h5(config, polar = False, trva=None):
                 data = load_from_binary(f, log_grid, config.nvar, polar)
                 if polar:
                     data = toPolar(log_grid, data)
+                if resize:
+                    data = resize(data)
                 disk_grp_tr[str(j)] = data
 
             for j, f in enumerate(f_names_va):
@@ -105,6 +109,8 @@ def save_to_h5(config, polar = False, trva=None):
                 data = load_from_binary(f, log_grid, config.nvar, polar)
                 if polar:
                     data = toPolar(log_grid, data)
+                if resize:
+                    data = resize(data)
                 disk_grp_va[str(j)] = data
         else:
             for j, f in enumerate(f_names):
@@ -112,6 +118,8 @@ def save_to_h5(config, polar = False, trva=None):
                 data = load_from_binary(f, log_grid, config.nvar, polar)
                 if polar:
                     data = toPolar(log_grid, data)
+                if resize:
+                    data = resize(data)
                 disk_grp[str(j)] = data
 
 
