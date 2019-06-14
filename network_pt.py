@@ -45,6 +45,7 @@ class network(object):
         self.input_size = config.input_size
         self.crop_size = config.crop_size
         self.label_size = config.label_size
+        self.valid_required = True
         # For debug on Windows
         if os.name == 'nt':
             self.data_dir = str(config.h5_dir_win)
@@ -53,12 +54,12 @@ class network(object):
             self.epochs = 1
             self.min_step_diff = None
 
+        # Inferenced parameter
         self.tr_data_dir = Path(self.data_dir + "_tr.h5")
         self.va_data_dir = Path(self.data_dir + "_va.h5")
         # Sizes to crop the input img
         self.ltl = (int(0.5 * (self.crop_size[0] - self.label_size[0])), int(0.5 * (self.crop_size[1] - self.label_size[1])))
         self.lbr = (self.ltl[0] + self.label_size[0], self.ltl[1] + self.label_size[1])
-        self.valid_required = True
         # Global step
         self.step = 0
 
@@ -123,11 +124,13 @@ class network(object):
         # valid_sampler = SubsetRandomSampler(valid)
 
         self.train_loader = DataLoader(self.data_tr, 
-                                       batch_size = self.batch_size, 
+                                       batch_size = self.batch_size,
+                                       num_workers=3, 
                                        # sampler = train_sampler, 
                                        shuffle = True)
         self.valid_loader = DataLoader(self.data_va, 
                                        batch_size = self.batch_size, 
+                                       num_workers=3, 
                                        # sampler = valid_sampler, 
                                        shuffle = True)
 
@@ -144,7 +147,7 @@ class network(object):
 
         self.model = ResNet().to(self.device)
         self.optimizer = optim.Adam(self.model.parameters(), lr=self.lr)
-        self.scheduler = optim.lr_scheduler.MultiStepLR(self.optimizer, milestones=[75, 150], gamma=0.5)
+        # self.scheduler = optim.lr_scheduler.MultiStepLR(self.optimizer, milestones=[1, 10], gamma=0.5)
         self.criterion = MSELoss().to(self.device) # set reduction=sum, or too smal to see
         # self.criterion = L1Loss().to(self.device)
 
@@ -691,7 +694,7 @@ class network(object):
             start_epoch = epoch + 1
         # Iterate through epochs
         for epoch in range(start_epoch, self.epochs + 1):
-            self.scheduler.step(epoch)
+            # self.scheduler.step(epoch)
             print("\n===> epoch: {}/{}".format(epoch, self.epochs))
             # train_result = self.train()
             train_result = self.train(valid = self.valid_required)
@@ -787,8 +790,6 @@ class network(object):
             print("Model file does not exists, trying checkpoint")
             self.model = ResNet().to(device)
             self.optimizer = optim.Adam(self.model.parameters(), lr=self.lr)
-            self.scheduler = optim.lr_scheduler.MultiStepLR(self.optimizer, milestones=[75, 150], gamma=0.5)
-            self.criterion = L1Loss().to(device)
             self.load_checkpoint()
 
         # Run the network with input
