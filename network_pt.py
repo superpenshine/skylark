@@ -267,7 +267,7 @@ class network(object):
         label = torch.unsqueeze(label, 0)
         duo, label, i1_crop = duo.to(self.device), label.to(self.device), i1_crop.to(self.device)
         self.model.train()
-        for iter_id in range(3000):
+        for iter_id in range(1):
             output = self.model(duo)
             loss = self.criterion(output + i1_crop, label)
             self.optimizer.zero_grad()
