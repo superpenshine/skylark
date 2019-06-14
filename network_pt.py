@@ -712,11 +712,12 @@ class network(object):
             os.remove(self.checkpoint)
 
 
-    def test_single(self, triplet_id = None, step_diff = None):
+    def test_single(self, triplet_id = None, step_diff = None, audience='astro'):
         '''
         Visualize using trained model
         triplet_id: triplet index to use, default will be random
         step_diff: a tuple of (min_step_diff, max_step_diff)
+        audience: 'astro' or 'cs' for different visualization arrangement
         '''
         var = 1
         n_row = 5
@@ -739,35 +740,44 @@ class network(object):
                             max_step_diff = self.max_step_diff, 
                             rtn_log_grid = False, 
                             verbose = True) # RandomCrop is group op
-
         # Fetch triplets and transform
         i0, i1, label, info_dict = data_va[triplet_id]
 
-        tran_before_pad = transforms.Compose([
-                                              # Crop((0, 0), (440, 1024)), 
-                                              Resize(self.input_size), 
-                                              Normalize(mean=.5), 
-                                              # Resize((55, 128)), 
-                                              # Resize((32, 32)), 
-                                              ])
-        i0 = tran_before_pad(i0)
-        i1 = tran_before_pad(i1)
-        label = tran_before_pad(label)
+        # tran = transforms.Compose([
+        #                           # Crop((0, 0), (440, 1024)), 
+        #                           Resize(self.input_size), 
+        #                           Normalize(mean=.5), 
+        #                           # Resize((55, 128)), 
+        #                           # Resize((32, 32)), 
+        #                           ])
+        # i0 = tran(i0)
+        # i1 = tran(i1)
+        # label = tran(label)
+        resize = Resize(self.input_size)
+        i0_sized = resize(i0)
+        i1_sized = resize(i1)
+        label_sized = resize(label)
+
+        norm = Normalize(mean=.5)
+        i0_normed = norm(i0_sized)
+        i1_normed = norm(i1_sized)
+        label_normed = norm(label_sized)
 
         # self.writer.add_images('triplet', np.expand_dims(np.stack([i0[:,:,var], label[:,:,var], i1[:,:,var]]), 3), dataformats='NHWC')
         self.writer.add_images('i0', i0[:,:,var], dataformats='HW')
-        self.writer.add_images('label', label[:,:,var], dataformats='HW')
         self.writer.add_images('i1', i1[:,:,var], dataformats='HW')
+        self.writer.add_images('label', label[:,:,var], dataformats='HW')
         pad = transforms.Compose([CustomPad((math.ceil((self.crop_size[1] - self.label_size[1])/2), 0, math.ceil((self.crop_size[1] - self.label_size[1])/2), 0), 'circular'), 
                                   CustomPad((0, math.ceil((self.crop_size[0] - self.label_size[0])/2), 0, math.ceil((self.crop_size[0] - self.label_size[0])/2)), 'zero', constant_values=0)])
-        i0 = pad(i0)
-        i1_padded = pad(i1)
+        i0_padded = pad(i0_normed)
+        i1_padded = pad(i1_normed)
 
         to_tensor = ToTensor()
-        i0 = to_tensor(i0)
+        i0_normed = to_tensor(i0_normed)
+        i0_padded = to_tensor(i0_padded)
+        i1_normed = to_tensor(i1_normed)
         i1_padded = to_tensor(i1_padded)
-        i1 = to_tensor(i1)
-        label = to_tensor(label)
+        label_normed = to_tensor(label_normed)
 
         # Setup network
         device = torch.device('cpu')
@@ -784,51 +794,80 @@ class network(object):
         # Run the network with input
         self.model.eval()
         with torch.no_grad():
-            duo = torch.cat([i0, i1_padded], dim=0)
+            duo = torch.cat([i0_padded, i1_padded], dim=0)
             duo = torch.unsqueeze(duo, 0)
             output = self.model(duo)
-            out = output[0] + i1
-            residue = out - label
-            original_diff = i1 - label
+            out = output[0] + i1_normed
+            residue = out - label_normed
+            original_diff = i1_normed - label_normed
 
         # Visualize and add to summary
+        # Prepare data
         out = out[var]
-        label = label[var]
         residue = residue[var]
         original_diff = original_diff[var]
-        i1 = i1[var]
-        self.writer.add_image('residue', (residue - torch.min(residue)) / (torch.max(residue) - torch.min(residue)), dataformats='HW')
-        self.writer.add_image('synthetic', out, dataformats='HW')
-        self.writer.add_image('i1_centercrop', i1, dataformats='HW')
+        i0_sized = resize(i0)[:,:,var]
+        i1_sized = resize(i1)[:,:,var]
+        label_sized = resize(label)[:,:,var]
         # default dpi 6.4, 4.8
-        # plt.figure(figsize=(20, 4), dpi=200)
-        plt.subplot(241)
-        plt.title('GT')
-        plt.imshow(label)   
-        plt.colorbar() 
-        plt.subplot(242)
-        plt.title('Out')
-        plt.imshow(out)
-        plt.colorbar()
-        plt.subplot(243)
-        plt.title('i1_cropped')
-        plt.imshow(i1)
-        plt.colorbar()
-        # Calculate max/min of resudue & original difference together
-        vmax = max(torch.max(residue), torch.max(original_diff))
-        vmin = min(torch.min(residue), torch.min(original_diff))
-        plt.subplot(244)
-        plt.title('Out-GT(rescaled)')
-        plt.imshow(residue, vmin = vmin, vmax = vmax)
-        plt.colorbar()
-        plt.subplot(247)
-        plt.title('Out-GT')
-        plt.imshow(residue)
-        plt.colorbar()
-        plt.subplot(248)
-        plt.title('i1_cropped-GT(rescaled)')
-        plt.imshow(original_diff, vmin = vmin, vmax = vmax)
-        plt.colorbar()
+        # plt.figure(figsize=(20, 4), dpi=200).
+        if audience == 'astro':
+            plt.subplot(241)
+            plt.title('i0')
+            plt.imshow(i0_sized)
+            plt.colorbar()
+            plt.subplot(242)
+            plt.title('i1')
+            plt.imshow(i1_sized)
+            plt.colorbar()
+            plt.subplot(243)
+            plt.title('GT')
+            plt.imshow(label_sized) 
+            plt.colorbar() 
+            plt.subplot(244)
+            plt.title('Out')
+            plt.imshow(out)
+            plt.colorbar()
+            plt.subplot(248)
+            plt.title('Residue(Out-Normalize(GT))')
+            plt.imshow(residue)
+            plt.colorbar()
+        elif audience == 'cs':
+            plt.subplot(241)
+            plt.title('GT')
+            plt.imshow(label_normed[var])   
+            plt.colorbar() 
+            plt.subplot(242)
+            plt.title('Out')
+            plt.imshow(out)
+            plt.colorbar()
+            plt.subplot(243)
+            plt.title('i1_cropped')
+            plt.imshow(i1_normed[var])
+            plt.colorbar()
+            # Calculate max/min of resudue & original difference together
+            vmax = max(torch.max(residue), torch.max(original_diff))
+            vmin = min(torch.min(residue), torch.min(original_diff))
+            plt.subplot(244)
+            plt.title('Out-GT(rescaled)')
+            plt.imshow(residue, vmin = vmin, vmax = vmax)
+            plt.colorbar()
+            plt.subplot(247)
+            plt.title('Out-GT')
+            plt.imshow(residue)
+            plt.colorbar()
+            plt.subplot(248)
+            plt.title('i1_cropped-GT(rescaled)')
+            plt.imshow(original_diff, vmin = vmin, vmax = vmax)
+            plt.colorbar()
+
+        norm = Normalize()
+        self.writer.add_image('residue', norm(residue), dataformats='HW')
+        self.writer.add_image('synthetic', norm(out), dataformats='HW')
+        self.writer.add_image('resized_i0', i0_normed[var], dataformats='HW')
+        self.writer.add_image('resized_i1', i1_normed[var], dataformats='HW')
+        self.writer.add_image('resized_label', label_normed[var], dataformats='HW')
+
 
         # plt.savefig("a.png")
         print("triplet id: ", triplet_id)
