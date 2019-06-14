@@ -51,7 +51,7 @@ class network(object):
             self.batch_size = 2
             self.valid_required = False
             self.epochs = 1
-            self.min_step_diff = 74
+            self.min_step_diff = None
 
         self.tr_data_dir = Path(self.data_dir + "_tr.h5")
         self.va_data_dir = Path(self.data_dir + "_va.h5")
