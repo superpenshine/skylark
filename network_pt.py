@@ -32,6 +32,7 @@ class network(object):
         super(network, self).__init__()
         self.checkpoint = "checkpoint.tar"
         self.model_dir = "model.pth"
+        self.data_dir = str(config.h5_dir_linux)
         self.log_dir = config.log_dir
         self.valid_size = config.valid_size
         self.min_step_diff = config.min_step_diff
@@ -44,23 +45,20 @@ class network(object):
         self.input_size = config.input_size
         self.crop_size = config.crop_size
         self.label_size = config.label_size
-
+        # For debug on Windows
         if os.name == 'nt':
-            # For debug on Windows
             self.data_dir = str(config.h5_dir_win)
             self.batch_size = 2
-            self.valid = False
+            self.valid_required = False
             self.epochs = 1
-        else:
-            self.data_dir = str(config.h5_dir_linux)
-
-        # Sizes to crop the input img
-        self.ltl = (int(0.5 * (self.crop_size[0] - self.label_size[0])), int(0.5 * (self.crop_size[1] - self.label_size[1])))
-        self.lbr = (self.ltl[0] + self.label_size[0], self.ltl[1] + self.label_size[1])
+            self.min_step_diff = 74
 
         self.tr_data_dir = Path(self.data_dir + "_tr.h5")
         self.va_data_dir = Path(self.data_dir + "_va.h5")
-
+        # Sizes to crop the input img
+        self.ltl = (int(0.5 * (self.crop_size[0] - self.label_size[0])), int(0.5 * (self.crop_size[1] - self.label_size[1])))
+        self.lbr = (self.ltl[0] + self.label_size[0], self.ltl[1] + self.label_size[1])
+        self.valid_required = True
         # Global step
         self.step = 0
 
@@ -680,6 +678,7 @@ class network(object):
         self.load_data()
         self.load_model()
 
+        # Construct network grgh
         sample_input=(torch.rand(1, 8, self.crop_size[0], self.crop_size[1]))
         self.writer.add_graph(model = ResNet(), input_to_model=sample_input)
 
@@ -695,8 +694,8 @@ class network(object):
             self.scheduler.step(epoch)
             print("\n===> epoch: {}/{}".format(epoch, self.epochs))
             # train_result = self.train()
-            train_result = self.train(valid = self.valid)
-            print("Epoch {} loss: {}".format(epoch, train_result))
+            train_result = self.train(valid = self.valid_required)
+            # print("Epoch {} loss: {}".format(epoch, train_result))
             # accuracy = max(accuracy, valid_result[1])
             # test_result = self.test()
             # accuracy = max(accuracy, test_result[1])
@@ -704,7 +703,8 @@ class network(object):
             if epoch % self.checkpoint_freq == 0:
                 self.save_checkpoint(accuracy, epoch)
 
-        print("===> BEST ACC. PERFORMANCE: %.3f%%" % (accuracy * 100))
+        print("Training finished")
+        self.writer._get_file_writer().flush()
         self.save()
         # Remove the checkpoint when training finished and the model is saved
         print("Checkpoint removed upon training complete")
@@ -753,7 +753,7 @@ class network(object):
         i0 = tran_before_pad(i0)
         i1 = tran_before_pad(i1)
         label = tran_before_pad(label)
-        
+
         # self.writer.add_images('triplet', np.expand_dims(np.stack([i0[:,:,var], label[:,:,var], i1[:,:,var]]), 3), dataformats='NHWC')
         self.writer.add_images('i0', i0[:,:,var], dataformats='HW')
         self.writer.add_images('label', label[:,:,var], dataformats='HW')
