@@ -1,5 +1,5 @@
 #!/bin/bash
-source ~/.bashrc
-source ~/scratch/venv/bin/activate
+source /home/sht/.bashrc
+source /home/sht/scratch/venv/bin/activate
 module load cuda cudnn
-~/scratch/skylark/main.py
+/home/sht/scratch/skylark/main.py
