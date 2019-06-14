@@ -750,16 +750,14 @@ class network(object):
                                               # Resize((55, 128)), 
                                               # Resize((32, 32)), 
                                               ])
-
         i0 = tran_before_pad(i0)
         i1 = tran_before_pad(i1)
         label = tran_before_pad(label)
-
+        
         # self.writer.add_images('triplet', np.expand_dims(np.stack([i0[:,:,var], label[:,:,var], i1[:,:,var]]), 3), dataformats='NHWC')
         self.writer.add_images('i0', i0[:,:,var], dataformats='HW')
         self.writer.add_images('label', label[:,:,var], dataformats='HW')
         self.writer.add_images('i1', i1[:,:,var], dataformats='HW')
-
         pad = transforms.Compose([CustomPad((math.ceil((self.crop_size[1] - self.label_size[1])/2), 0, math.ceil((self.crop_size[1] - self.label_size[1])/2), 0), 'circular'), 
                                   CustomPad((0, math.ceil((self.crop_size[0] - self.label_size[0])/2), 0, math.ceil((self.crop_size[0] - self.label_size[0])/2)), 'zero', constant_values=0)])
         i0 = pad(i0)

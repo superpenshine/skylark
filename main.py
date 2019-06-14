@@ -49,9 +49,7 @@ def main():
         # solver.sanity_check_randcrop_interpo_loss()
         # solver.sanity_visualize()
     else:
-        # solver.run()
-        solver.sanity_check_regular_loss()
-
+        solver.run()
 
 if __name__ == "__main__":
     main()
