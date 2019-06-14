@@ -14,10 +14,12 @@ class Astrodata(Dataset):
         '''
         transform: transformations to apply on imgs
         '''
-        self.data = h5py.File(data_dir)
-        self.d_names = list(self.data.keys())
-        # Minus 1 to get rid of "log_grid" in each disk
-        self.d_steps = [len(self.data[d_name].keys()) - 1 for d_name in self.d_names]
+        # self.data = h5py.File(data_dir, 'r')
+        self.data_dir = data_dir
+        with h5py.File(self.data_dir, "r") as data:
+            self.d_names = list(data.keys())
+            # Minus 1 to get rid of "log_grid" in each disk
+            self.d_steps = [len(data[d_name].keys()) - 1 for d_name in self.d_names]
         self.min_step_diff = min_step_diff
         self.max_step_diff = max_step_diff
         self.rtn_log_grid = rtn_log_grid
@@ -41,9 +43,12 @@ class Astrodata(Dataset):
         '''
         d, l_id, h_id, m_id = self.mapping(idx)
         # print(d, l, h, m)
-        l = np.array(self.data[d][str(l_id)])
-        h = np.array(self.data[d][str(h_id)])
-        m = np.array(self.data[d][str(m_id)])
+        with h5py.File(self.data_dir, "r") as data:
+            data_d = data[d]
+            l = np.array(data_d[str(l_id)])
+            h = np.array(data_d[str(h_id)])
+            m = np.array(data_d[str(m_id)])
+            log_grid = np.asarray(data_d["log_grid"])
 
         # Apply transforms
         if self.transforms:
@@ -56,7 +61,6 @@ class Astrodata(Dataset):
                 # Check if func arguments requires of log_grid
                 # if 'log_grid' in transform.__call__.__code__.co_varnames:
                 if hasattr(transform, 'require_grid'):
-                    log_grid = np.asarray(self.data[d]["log_grid"])
                     l = transform(log_grid, l)
                     h = transform(log_grid, h)
                     m = transform(log_grid, m)
@@ -67,7 +71,6 @@ class Astrodata(Dataset):
 
         ret = []
         if self.rtn_log_grid:
-            log_grid = np.asarray(self.data[d]["log_grid"])
             ret.append(log_grid)
         ret.extend([l, h, m])
         # Verbose mode, return disk name, img indexes
