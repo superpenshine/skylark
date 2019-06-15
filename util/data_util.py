@@ -55,7 +55,6 @@ def save_to_h5(config, polar = False, size = None, trva=None):
     # For debug on Windows
     if os.name == 'nt':
         h5_dir = str(config.h5_dir_win)
-
     if polar:
         toPolar = LogPolartoPolar()
     if size: 
