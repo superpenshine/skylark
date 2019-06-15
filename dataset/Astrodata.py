@@ -31,12 +31,13 @@ class Astrodata(Dataset):
         self.verbose = verbose
 
         self.calc_valid_step_diffs()
-        self.step_diff_validity_check()
-
         if not self.min_step_diff:
             self.min_step_diff = 2
-
-        self.calc_bounds()
+        if not self.max_step_diff:
+            self.max_step_diff = max(self.max_valid_step_diffs)
+        self.step_diff_validity_check()
+        # self.calc_bounds()
+        self.triplets = self.get_map()
 
 
     def __getitem__(self, idx):
@@ -45,7 +46,8 @@ class Astrodata(Dataset):
         l, h: Two input imgs for training
         m: label img
         '''
-        d, l_id, h_id, m_id = self.mapping(idx)
+        # d, l_id, h_id, m_id = self.mapping(idx)
+        d, l_id, h_id, m_id = self.triplets[idx]
         # print(d, l, h, m)
         with h5py.File(self.data_dir, "r") as data:
             data_d = data[d]
@@ -88,8 +90,28 @@ class Astrodata(Dataset):
 
     def __len__(self):
         # Total number of triplets: 0.25n^2-0.25n-int(0.5n)0.5
-        return sum(self.d_bounds)
+        # return sum(self.d_bounds)
+        return len(self.triplets)
 
+
+    def get_map(self):
+        '''
+        Get List of all possible triplets
+        '''
+        triplets = []
+        for d_id, d_name in enumerate(self.d_names):
+            num_dsteps = self.d_steps[d_id]
+            max_valid = min(num_dsteps, self.max_step_diff)
+            for l in range(num_dsteps - 2):
+                h = l + self.min_step_diff
+                m = int(0.5 * (h + l))
+                while h - l <= max_valid and h < num_dsteps:
+                    triplets.append((d_name, l, h, m))
+                    h += 2
+                    m = l + int(0.5 * (h - l))
+
+        return triplets
+        
 
     def mapping(self, idx):
         '''
@@ -190,20 +212,17 @@ class Astrodata(Dataset):
         '''
         Check the validity of min/max step difference
         '''
-        if self.min_step_diff:
-            if self.min_step_diff % 2 != 0:
-                raise ValueError("Min_step_diff must be an even number.")
+        if self.min_step_diff % 2 != 0:
+            raise ValueError("Min_step_diff must be an even number.")
 
-            if self.min_step_diff > max(self.max_valid_step_diffs):
-                raise ValueError("Min_step_diff should be less or equal to {}".format(max(self.max_valid_step_diffs)))
+        if self.min_step_diff > max(self.max_valid_step_diffs):
+            raise ValueError("Min_step_diff should be less or equal to {}".format(max(self.max_valid_step_diffs)))
 
-        if self.max_step_diff:
-            if self.max_step_diff % 2 != 0:
-                raise ValueError("Max_step_diff must be an even number.")
+        if self.max_step_diff % 2 != 0:
+            raise ValueError("Max_step_diff must be an even number.")
 
-        if self.min_step_diff and self.max_step_diff:
-            if self.min_step_diff > self.max_step_diff:
-                raise ValueError("Min_step_diff must be less than Max_step_diff")
+        if self.min_step_diff > self.max_step_diff:
+            raise ValueError("Min_step_diff must be less than Max_step_diff")
 
 
     def calc_bounds(self):

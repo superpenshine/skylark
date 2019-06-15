@@ -52,8 +52,8 @@ class network(object):
             self.data_dir = str(config.h5_dir_win)
             self.batch_size = 2
             self.valid_required = False
-            self.epochs = 1
-            self.min_step_diff = 60
+            self.epochs = 5
+            self.min_step_diff = 68
 
         # Inferenced parameter
         self.tr_data_dir = Path(self.data_dir + "_tr.h5")
@@ -575,7 +575,7 @@ class network(object):
         '''
         print("\ntrain:")
         self.model.train()
-        # start = time.time()
+        start = time.time()
         for b_id, (i0, i1, label) in enumerate(self.train_loader):
             # Only cut i1 for err calc
             i1_crop = i1[:,:,self.ltl[0]:self.lbr[0],self.ltl[1]:self.lbr[1]]
@@ -597,7 +597,7 @@ class network(object):
                 self.writer.add_scalar('Train/Loss', loss.item(), self.step)
                 self.writer.add_scalar('Valid/Loss', valid_result, self.step)
             self.step += 1
-        # print(time.time() - start)
+        print(time.time() - start)
 
     def valid(self):
         '''
@@ -694,6 +694,7 @@ class network(object):
         if Path(self.checkpoint).exists():
             accuracy, epoch = self.load_checkpoint()
             start_epoch = epoch + 1
+            print("Checkpoint loaded starting from epoch {} step {}".format(start_epoch, self.step))
         # Iterate through epochs
         for epoch in range(start_epoch, self.epochs + 1):
             # self.scheduler.step(epoch)
