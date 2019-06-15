@@ -4,6 +4,7 @@ import pdb
 import os
 import cv2
 import math
+import time
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -52,7 +53,7 @@ class network(object):
             self.batch_size = 2
             self.valid_required = False
             self.epochs = 1
-            self.min_step_diff = 74
+            self.min_step_diff = 60
 
         # Inferenced parameter
         self.tr_data_dir = Path(self.data_dir + "_tr.h5")
@@ -92,7 +93,7 @@ class network(object):
                  CustomPad((math.ceil((self.crop_size[1] - self.label_size[1])/2), 0, math.ceil((self.crop_size[1] - self.label_size[1])/2), 0), 'circular'), 
                  CustomPad((0, math.ceil((self.crop_size[0] - self.label_size[0])/2), 0, math.ceil((self.crop_size[0] - self.label_size[0])/2)), 'zero', constant_values=0), 
                  GroupRandomCrop(self.crop_size, label_size=self.label_size), 
-                 Normalize(mean=.5),
+                 # Normalize(mean=.5),
                  ToTensor()
 
                  # transforms.ToPILImage(), 
@@ -125,12 +126,12 @@ class network(object):
 
         self.train_loader = DataLoader(self.data_tr, 
                                        batch_size = self.batch_size,
-                                       num_workers=3, 
+                                       num_workers=8, 
                                        # sampler = train_sampler, 
                                        shuffle = True)
         self.valid_loader = DataLoader(self.data_va, 
                                        batch_size = self.batch_size, 
-                                       num_workers=3, 
+                                       num_workers=8, 
                                        # sampler = valid_sampler, 
                                        shuffle = True)
 
@@ -140,9 +141,11 @@ class network(object):
         Load the torch model
         '''
         if self.cuda:
+            print("Using GPU")
             self.device = torch.device('cuda')
             cudnn.benchmark = True
         else:
+            print("Using CPU")
             self.device = torch.device('cpu')
 
         self.model = ResNet().to(self.device)
@@ -572,8 +575,7 @@ class network(object):
         '''
         print("\ntrain:")
         self.model.train()
-        # pdb.set_trace()
-
+        # start = time.time()
         for b_id, (i0, i1, label) in enumerate(self.train_loader):
             # Only cut i1 for err calc
             i1_crop = i1[:,:,self.ltl[0]:self.lbr[0],self.ltl[1]:self.lbr[1]]
@@ -589,13 +591,13 @@ class network(object):
             self.optimizer.step()
             print("step{}, loss: {:.4f}".format(self.step, loss.item()))
 
-            if self.step % 10 == 0 and valid == True:
+            if self.step % 10 == 0 and valid:
                 valid_result = self.valid()
                 self.model.train()
                 self.writer.add_scalar('Train/Loss', loss.item(), self.step)
                 self.writer.add_scalar('Valid/Loss', valid_result, self.step)
             self.step += 1
-
+        # print(time.time() - start)
 
     def valid(self):
         '''
@@ -709,7 +711,7 @@ class network(object):
         print("Training finished")
         self.writer._get_file_writer().flush()
         self.save()
-        # Remove the checkpoint when training finished and the model is saved
+        # Remove the checkpoint when complete and the model is saved
         if os.path.exists(self.checkpoint):
             os.remove(self.checkpoint)
         print("Checkpoint removed upon training complete")
@@ -745,7 +747,6 @@ class network(object):
                             verbose = True) # RandomCrop is group op
         # Fetch triplets and transform
         i0, i1, label, info_dict = data_va[triplet_id]
-
         # tran = transforms.Compose([
         #                           # Crop((0, 0), (440, 1024)), 
         #                           Resize(self.input_size), 
@@ -763,9 +764,9 @@ class network(object):
         # label_sized = resize(label)
 
         norm = Normalize(mean=.5)
-        i0_normed = norm(i0)
-        i1_normed = norm(i1)
-        label_normed = norm(label)
+        i0_normed = norm(np.array(i0))
+        i1_normed = norm(np.array(i1))
+        label_normed = norm(np.array(label))
 
         # self.writer.add_images('triplet', np.expand_dims(np.stack([i0[:,:,var], label[:,:,var], i1[:,:,var]]), 3), dataformats='NHWC')
         self.writer.add_images('i0', i0[:,:,var], dataformats='HW')
