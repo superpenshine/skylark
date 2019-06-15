@@ -59,7 +59,7 @@ sys_arg.add_argument("--lr", type=float,
                     help="Learning rate")
 
 sys_arg.add_argument("--epochs", type=int,
-                    default=30,
+                    default=3,
                     help="Number of epochs")
 
 sys_arg.add_argument("--f_gird", type=Path,
