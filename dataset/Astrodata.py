@@ -109,8 +109,7 @@ class Astrodata(Dataset):
                     triplets.append((d_name, l, h, m))
                     h += 2
                     m = l + int(0.5 * (h - l))
-        import pdb
-        pdb.set_trace()
+                    
         return triplets
 
 
