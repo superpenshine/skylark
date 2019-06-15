@@ -51,15 +51,15 @@ sys_arg.add_argument("--max_step_diff", type=int,
                     help="None or an integer indicating max step difference")
 
 sys_arg.add_argument("--batch_size", type=int,
-                    default=20,
+                    default=10,
                     help="Batch size")
 
 sys_arg.add_argument("--lr", type=float,
-                    default=0.00005,
+                    default=0.00003,
                     help="Learning rate")
 
 sys_arg.add_argument("--epochs", type=int,
-                    default=40,
+                    default=71,
                     help="Number of epochs")
 
 sys_arg.add_argument("--f_gird", type=Path,
