@@ -52,7 +52,7 @@ class network(object):
             self.batch_size = 2
             self.valid_required = False
             self.epochs = 1
-            self.min_step_diff = None
+            self.min_step_diff = 74
 
         # Inferenced parameter
         self.tr_data_dir = Path(self.data_dir + "_tr.h5")
@@ -87,7 +87,7 @@ class network(object):
                  # ToTensor()
 
                  # For square input
-                 Resize((self.input_size)), 
+                 # Resize((self.input_size)), # Done in .5py
                  # LogPolartoPolar(), # Use polar data instead, too expensive
                  CustomPad((math.ceil((self.crop_size[1] - self.label_size[1])/2), 0, math.ceil((self.crop_size[1] - self.label_size[1])/2), 0), 'circular'), 
                  CustomPad((0, math.ceil((self.crop_size[0] - self.label_size[0])/2), 0, math.ceil((self.crop_size[0] - self.label_size[0])/2)), 'zero', constant_values=0), 
@@ -710,9 +710,9 @@ class network(object):
         self.writer._get_file_writer().flush()
         self.save()
         # Remove the checkpoint when training finished and the model is saved
-        print("Checkpoint removed upon training complete")
         if os.path.exists(self.checkpoint):
             os.remove(self.checkpoint)
+        print("Checkpoint removed upon training complete")
 
 
     def test_single(self, triplet_id = None, step_diff = None, audience='astro'):
@@ -756,15 +756,16 @@ class network(object):
         # i0 = tran(i0)
         # i1 = tran(i1)
         # label = tran(label)
-        resize = Resize(self.input_size)
-        i0_sized = resize(i0)
-        i1_sized = resize(i1)
-        label_sized = resize(label)
+
+        # resize = Resize(self.input_size) # Done in .5py
+        # i0_sized = resize(i0)
+        # i1_sized = resize(i1)
+        # label_sized = resize(label)
 
         norm = Normalize(mean=.5)
-        i0_normed = norm(i0_sized)
-        i1_normed = norm(i1_sized)
-        label_normed = norm(label_sized)
+        i0_normed = norm(i0)
+        i1_normed = norm(i1)
+        label_normed = norm(label)
 
         # self.writer.add_images('triplet', np.expand_dims(np.stack([i0[:,:,var], label[:,:,var], i1[:,:,var]]), 3), dataformats='NHWC')
         self.writer.add_images('i0', i0[:,:,var], dataformats='HW')
@@ -807,23 +808,23 @@ class network(object):
         out = out[var]
         residue = residue[var]
         original_diff = original_diff[var]
-        i0_sized = resize(i0)[:,:,var]
-        i1_sized = resize(i1)[:,:,var]
-        label_sized = resize(label)[:,:,var]
+        i0 = i0[:,:,var]
+        i1 = i1[:,:,var]
+        label = label[:,:,var]
         # default dpi 6.4, 4.8
         # plt.figure(figsize=(20, 4), dpi=200).
         if audience == 'astro':
             plt.subplot(241)
             plt.title('i0')
-            plt.imshow(i0_sized)
+            plt.imshow(i0)
             plt.colorbar()
             plt.subplot(242)
             plt.title('i1')
-            plt.imshow(i1_sized)
+            plt.imshow(i1)
             plt.colorbar()
             plt.subplot(243)
             plt.title('GT')
-            plt.imshow(label_sized) 
+            plt.imshow(label) 
             plt.colorbar() 
             plt.subplot(244)
             plt.title('Out')

@@ -38,7 +38,7 @@ def main():
         solver.test_single(triplet_id = 40, step_diff = (40, None))
         return
     elif config.m == 'save':
-        save_to_h5(config, trva=True, polar=True)
+        save_to_h5(config, trva=True, polar=True, size=32)
         return
     elif config.m == 'p':
         data, grid = load(str(config.h5_dir_win) + "_tr.h5", "sigma_data", 71)

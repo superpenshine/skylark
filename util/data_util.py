@@ -1,5 +1,6 @@
 # Simulation data loader
 
+import os
 import pdb
 import h5py
 import platform
@@ -30,7 +31,8 @@ def get_ny(data, log_grid, nvar):
     div, mod = divmod(data.shape[0] / nvar,  nx)
 
     if mod != 0:
-        raise ValueError("Invalid data format, data:{}, log_grid:{}, {}".format(data.shape, log_grid.shape, nvar))
+        raise ValueError(
+            "Invalid data format, data:{}, log_grid:{}, {}".format(data.shape, log_grid.shape, nvar))
 
     return int(div)
 
@@ -46,16 +48,23 @@ def save_to_h5(config, polar = False, size = None, trva=None):
           [nx, ny, 2] -- dust for size 0.1cm
           [nx, ny, 3] -- dust for size 0.001cm
     '''
+    nvar = config.nvar
     file_pattern = config.pattern
+    h5_dir = config.h5_dir_linux
+    data_dir = config.data_dir
+    # For debug on Windows
+    if os.name == 'nt':
+        h5_dir = str(config.h5_dir_win)
+
     if polar:
         toPolar = LogPolartoPolar()
     if size: 
         resize = Resize(size)
     if trva:
-        out_tr = h5py.File(Path(str(config.h5_dir) + "_tr.h5"))
-        out_va = h5py.File(Path(str(config.h5_dir) + "_va.h5"))
+        out_tr = h5py.File(Path(str(h5_dir) + "_tr.h5"))
+        out_va = h5py.File(Path(str(h5_dir) + "_va.h5"))
     else:
-        h5_fout = h5py.File(config.h5_dir.with_suffix('.h5'))
+        h5_fout = h5py.File(h5_dir.with_suffix('.h5'))
 
     # Use dataset with shape if disks' frame numbers are the same
     # d_set = h5_fout.create_dataset(
@@ -67,9 +76,9 @@ def save_to_h5(config, polar = False, size = None, trva=None):
     #     compression_opts=4) # default ratio is 4
 
     # Iterate through disk data folders
-    for i, fo in enumerate([config.data_dir]):
+    for i, fo in enumerate([data_dir]):
         fo_name = fo.stem
-        grid_dir = config.data_dir / config.f_gird
+        grid_dir = data_dir / config.f_gird
         log_grid = np.loadtxt(grid_dir)
         f_names = sorted(fo.glob(file_pattern))
 
@@ -97,28 +106,28 @@ def save_to_h5(config, polar = False, size = None, trva=None):
             # Write to tr/va files
             for j, f in enumerate(f_names_tr):
                 print("tr", j)
-                data = load_from_binary(f, log_grid, config.nvar, polar)
+                data = load_from_binary(f, log_grid, nvar, polar)
                 if polar:
                     data = toPolar(log_grid, data)
-                if resize:
+                if size:
                     data = resize(data)
                 disk_grp_tr[str(j)] = data
 
             for j, f in enumerate(f_names_va):
                 print("va", j)
-                data = load_from_binary(f, log_grid, config.nvar, polar)
+                data = load_from_binary(f, log_grid, nvar, polar)
                 if polar:
                     data = toPolar(log_grid, data)
-                if resize:
+                if size:
                     data = resize(data)
                 disk_grp_va[str(j)] = data
         else:
             for j, f in enumerate(f_names):
                 print(j)
-                data = load_from_binary(f, log_grid, config.nvar, polar)
+                data = load_from_binary(f, log_grid, nvar, polar)
                 if polar:
                     data = toPolar(log_grid, data)
-                if resize:
+                if size:
                     data = resize(data)
                 disk_grp[str(j)] = data
 

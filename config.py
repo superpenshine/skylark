@@ -34,6 +34,7 @@ sys_arg.add_argument("--data_dir", type=Path,
 sys_arg.add_argument("--h5_dir_win", type=Path,
                     # default='D:/sigma_data/data_polar',
                     default='D:/sigma_data/data_logpolar',
+                    # default='D:/sigma_data/data_logpolar_resized',
                     help="Win data file without the .h5 suffix")
 
 sys_arg.add_argument("--h5_dir_linux", type=Path,
