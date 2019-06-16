@@ -56,11 +56,11 @@ sys_arg.add_argument("--batch_size", type=int,
                     help="Batch size")
 
 sys_arg.add_argument("--lr", type=float,
-                    default=0.00001,
+                    default=0.000003,
                     help="Learning rate")
 
 sys_arg.add_argument("--epochs", type=int,
-                    default=200,
+                    default=250,
                     help="Number of epochs")
 
 sys_arg.add_argument("--f_gird", type=Path,
