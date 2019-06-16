@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 # main file
-
 import sys
 from config import get_config, print_usage
 # from network_tf import nn
@@ -48,6 +47,8 @@ def main():
         solver.sanity_check_regular_loss()
         # solver.sanity_check_randcrop_interpo_loss()
         # solver.sanity_visualize()
+    elif config.m == 'c':
+        solver.clean_up()
     else:
         solver.run()
 

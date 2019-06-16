@@ -2,6 +2,7 @@
 
 import pdb
 import os
+import shutil
 import cv2
 import math
 import time
@@ -52,8 +53,8 @@ class network(object):
             self.data_dir = str(config.h5_dir_win)
             self.batch_size = 2
             self.valid_required = False
-            self.epochs = 5
-            self.min_step_diff = 68
+            self.epochs = 1
+            self.min_step_diff = 74
 
         # Inferenced parameter
         self.tr_data_dir = Path(self.data_dir + "_tr.h5")
@@ -639,7 +640,7 @@ class network(object):
         self.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
         epoch = checkpoint['epoch']
         accuracy = checkpoint['accuracy']
-        self.step = checkpoint['step']
+        self.step = checkpoint['step'] + 1 # +1 for the next step
 
         return accuracy, epoch
 
@@ -690,16 +691,24 @@ class network(object):
         accuracy = 0
         start_epoch = 1
 
-        # Check if previous checkpoint exists. If it does, load the checkpoint
+        # Check if previous checkpoint/model file exists
         if Path(self.checkpoint).exists():
             accuracy, epoch = self.load_checkpoint()
             start_epoch = epoch + 1
             print("Checkpoint loaded starting from epoch {} step {}".format(start_epoch, self.step))
+        # elif Path(self.model_dir).exists():
+        #     self.load()
+        #     print("Resuming from model.pth, make sure current epoch and step are defined manually.")
+        #     self.step = 0
+        #     start_epoch = 2 # Starting from epoch 2
+        #     # Remove model for training and save as checkpoint
+        #     os.remove(self.model_dir)
+        #     self.save_checkpoint(accuracy, start_epoch - 1)
+
         # Iterate through epochs
         for epoch in range(start_epoch, self.epochs + 1):
             # self.scheduler.step(epoch)
             print("\n===> epoch: {}/{}".format(epoch, self.epochs))
-            # train_result = self.train()
             train_result = self.train(valid = self.valid_required)
             # print("Epoch {} loss: {}".format(epoch, train_result))
             # accuracy = max(accuracy, valid_result[1])
@@ -712,10 +721,11 @@ class network(object):
         print("Training finished")
         self.writer._get_file_writer().flush()
         self.save()
-        # Remove the checkpoint when complete and the model is saved
-        if os.path.exists(self.checkpoint):
-            os.remove(self.checkpoint)
-        print("Checkpoint removed upon training complete")
+        print("Saved to {}".format(self.model_dir))
+        # # Remove the checkpoint when complete and the model is saved
+        # if os.path.exists(self.checkpoint):
+        #     os.remove(self.checkpoint)
+        # print("Checkpoint removed upon training complete")
 
 
     def test_single(self, triplet_id = None, step_diff = None, audience='astro'):
@@ -880,3 +890,15 @@ class network(object):
         print("Residue sum: ", torch.sum(torch.abs(residue)))
         print("Original diff: ", torch.sum(torch.abs(original_diff)))
         plt.show()
+
+
+    def clean_up(self):
+        if Path(self.model_dir).exists():
+            os.remove(self.model_dir)
+        if Path(self.checkpoint).exists():
+            os.remove(self.checkpoint)
+        if Path('output').exists():
+            shutil.rmtree("output")
+        if Path('tmp').exists():
+            shutil.rmtree("tmp") 
+        print("Clean up finished")

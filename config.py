@@ -39,7 +39,8 @@ sys_arg.add_argument("--h5_dir_win", type=Path,
 
 sys_arg.add_argument("--h5_dir_linux", type=Path,
                     # default='/home/sht/data/sigma_data/data_polar', 
-                    default='/home/sht/data/sigma_data/data_logpolar', 
+                    # default='/home/sht/data/sigma_data/data_logpolar', 
+                    default='/home/sht/data/sigma_data/data_logpolar_resized', 
                     help="Linux data file without the .h5 suffix")
 
 sys_arg.add_argument("--min_step_diff", type=int,
@@ -55,11 +56,11 @@ sys_arg.add_argument("--batch_size", type=int,
                     help="Batch size")
 
 sys_arg.add_argument("--lr", type=float,
-                    default=0.00003,
+                    default=0.00001,
                     help="Learning rate")
 
 sys_arg.add_argument("--epochs", type=int,
-                    default=71,
+                    default=200,
                     help="Number of epochs")
 
 sys_arg.add_argument("--f_gird", type=Path,
