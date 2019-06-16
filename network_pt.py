@@ -728,7 +728,7 @@ class network(object):
         # print("Checkpoint removed upon training complete")
 
 
-    def test_single(self, triplet_id = None, step_diff = None, audience='cs'):
+    def test_single(self, triplet_id = None, step_diff = None, audience='astro'):
         '''
         Visualize using trained model
         triplet_id: triplet index to use, default will be random
