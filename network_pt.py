@@ -94,7 +94,7 @@ class network(object):
                  CustomPad((math.ceil((self.crop_size[1] - self.label_size[1])/2), 0, math.ceil((self.crop_size[1] - self.label_size[1])/2), 0), 'circular'), 
                  CustomPad((0, math.ceil((self.crop_size[0] - self.label_size[0])/2), 0, math.ceil((self.crop_size[0] - self.label_size[0])/2)), 'zero', constant_values=0), 
                  GroupRandomCrop(self.crop_size, label_size=self.label_size), 
-                 # Normalize(mean=.5),
+                 Normalize(mean=.5),
                  ToTensor()
 
                  # transforms.ToPILImage(), 
@@ -728,7 +728,7 @@ class network(object):
         # print("Checkpoint removed upon training complete")
 
 
-    def test_single(self, triplet_id = None, step_diff = None, audience='astro'):
+    def test_single(self, triplet_id = None, step_diff = None, audience='cs'):
         '''
         Visualize using trained model
         triplet_id: triplet index to use, default will be random
