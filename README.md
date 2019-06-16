@@ -21,14 +21,14 @@ Python requirements:
 * scipy
 
 ## Usage
-###Save raw data to h5py files
+- Save raw data to h5py files
 ```python main.py -m save```
 
-###Train model
+- Train model
 ```python main.py```
 
-###Visualize
+- Visualize
 ```python main.py -m v```
 
-###Clean up file/directory from last run
+- Clean up file/directory from last run
 ```python main.py -m c```
