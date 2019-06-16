@@ -20,3 +20,15 @@ Python requirements:
 * opencv-python
 * scipy
 
+## Usage
+###Save raw data to h5py files
+```python main.py -m save```
+
+###Train model
+```python main.py```
+
+###Visualize
+```python main.py -m v```
+
+###Clean up file/directory from last run
+```python main.py -m c```
