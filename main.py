@@ -34,15 +34,14 @@ def main():
 
     solver = network(config)
     if config.m == 'v':
-        solver.test_single(triplet_id = 40, step_diff = (40, None))
-        return
+        solver.test_single(triplet_id=40, step_diff=(40, None), dataset='va')
     elif config.m == 'save':
-        save_to_h5(config, trva=True, polar=False, size=32)
-        return
+        save_to_h5(config, trva=True, polar=False, size=3)
+    elif config.m == 'stats':
+        get_stats(str(config.h5_dir_win) + "_tr.h5", str(config.h5_dir_win) + "_va.h5", config.nvar, verbose=True)
     elif config.m == 'p':
-        data, grid = load(str(config.h5_dir_win) + "_tr.h5", "sigma_data", 71)
+        data, grid = load(str(config.h5_dir_win) + "_tr.h5", "sigma_data", 60)
         preview(data, grid, polar=False)
-        return
     elif config.m == 'sanity':
         solver.sanity_check_regular_loss()
         # solver.sanity_check_randcrop_interpo_loss()

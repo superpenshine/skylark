@@ -191,13 +191,17 @@ def preview(data, log_grid, polar = False, var = 1):
     nx, ny = data.shape[:2]
     theta = (np.arange(0, ny) * 1.0 / ny + 0.5 / ny) * 2 * np.pi
 
-    # Show in polar coords with mapping
-    rp1, rp2 = np.meshgrid(np.linspace(0, nx, nx), np.digitize(np.linspace(0, ny, ny), expand(log_grid, ny))-1)
-    polar_data = map_coordinates(data[:,:,var], (rp2, rp1))
-    # Looping over pixels, SLOW!
-    # polar_data = geometric_transform(data[:,:,var], partial(logpolar_to_polar, expand(log_grid, nx)))
-    crop = Crop((0, 0), (439, 1024))
-    plt.imshow(crop(data[:,:,var]))
+    plt.imshow(data[:,:,var])
+    # print(np.sum(np.square(data[:,:,var])))
+    # print(np.histogram(data[:,:,0], bins=10, range=(0, 7)))
+    plt.colorbar()
+    # # Show in polar coords with mapping
+    # rp1, rp2 = np.meshgrid(np.linspace(0, nx, nx), np.digitize(np.linspace(0, ny, ny), expand(log_grid, ny))-1)
+    # polar_data = map_coordinates(data[:,:,var], (rp2, rp1))
+    # # Looping over pixels, SLOW!
+    # # polar_data = geometric_transform(data[:,:,var], partial(logpolar_to_polar, expand(log_grid, nx)))
+    # crop = Crop((0, 0), (439, 1024))
+    # plt.imshow(crop(data[:,:,var]))
 
     # Show in polar coords using pcolormesh
     # rp1, rp2 = np.meshgrid(theta, log_grid)
@@ -241,3 +245,45 @@ def preview_raw(config, f_dir, grid_dir, polar = False, var = 1):
 
     preview(data, log_grid, polar = polar, var = var)
 
+
+def get_stats(h5_dir_tr, h5_dir_va, n_chan, verbose=False):
+    '''
+    Get dataset stats
+    '''
+    n = 0
+    _sum = np.zeros(n_chan)
+    sum_minus_mean_square = np.zeros(n_chan)
+
+    for _dir in [h5_dir_tr, h5_dir_va]:
+        data = h5py.File(_dir, "r")
+        d_names = list(data.keys())
+        for d_name in d_names:
+            disk_data = data[d_name]
+            d_step = len(disk_data.keys()) - 1
+            for d_step in range(d_step):
+                img = np.array(disk_data[str(d_step)])
+                _sum += np.sum(np.sum(img, axis=0), axis=0)
+                h, w = img.shape[:-1]
+                n += h * w
+
+    mean = _sum * 1.0 / n
+
+    for _dir in [h5_dir_tr, h5_dir_va]:
+        data = h5py.File(_dir, "r")
+        d_names = list(data.keys())
+        for d_name in d_names:
+            disk_data = data[d_name]
+            d_step = len(disk_data.keys()) - 1
+            for d_step in range(d_step):
+                img = np.array(disk_data[str(d_step)])
+                sum_minus_mean_square += np.sum(np.sum(np.square(img - mean), axis=0), axis=0)
+
+    std = np.sqrt(sum_minus_mean_square / n)
+    std = np.float32(std)
+    mean = np.float32(mean)
+    if verbose:
+        print("Total number of pixels: {}".format(n))
+        for chan in range(n_chan):
+            print("Channel{} mean: {}, std: {}".format(chan, mean[chan], std[chan]))
+
+    return mean, std

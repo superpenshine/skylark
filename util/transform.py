@@ -124,38 +124,17 @@ class Normalize(object):
     '''
     Normalize img values channel-wise
     '''
-    def __init__(self, mean=None):
-        self.mean = None
-        if mean:
-            self.mean = mean
+    def __init__(self, mean, std):
+        self.mean = mean
+        self.std = std
 
     def __call__(self, img):
         '''
         img: ndarray in HWC, or tensor in CHW
         '''
-        if isinstance(img, np.ndarray):
-            n_chan = img.shape[-1]
-            for c_i in range(n_chan):
-                c_max = np.amax(img[:,:,c_i])
-                c_min = np.amin(img[:,:,c_i])
-                if self.mean:
-                    img[:,:,c_i] = (img[:,:,c_i] - c_min) / (c_max - c_min) - self.mean
-                    continue
-                img[:,:,c_i] = (img[:,:,c_i] - c_min) / (c_max - c_min)
-            # return (img * 255).astype(np.uint8)
-            return img
-        elif isinstance(img, torch.Tensor):
-            n_chan = img.shape[0]
-            # Tensor passes a reference
-            ret = img.clone().detach().requires_grad_(False)
-            for c_i in range(n_chan):
-                c_max = torch.max(img[c_i])
-                c_min = torch.min(img[c_i])
-                if self.mean:
-                    ret[c_i] = (ret[c_i] - c_min) / (c_max - c_min) - self.mean
-                    continue
-                ret[c_i] = (ret[c_i] - c_min) / (c_max - c_min)
-            return ret
+        ret = (img - self.mean) / self.std
+        
+        return ret
 
 
 class ToTensor(object):

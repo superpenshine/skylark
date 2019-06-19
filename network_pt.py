@@ -11,6 +11,7 @@ import matplotlib.pyplot as plt
 
 from model import ResNet18, ResNet
 from pathlib import Path
+from util.data_util import get_stats
 from util.transform import CustomPad, GroupRandomCrop, ToTensor, Resize, LogPolartoPolar, Normalize, Crop
 from dataset.Astrodata import Astrodata
 
@@ -47,6 +48,7 @@ class network(object):
         self.input_size = config.input_size
         self.crop_size = config.crop_size
         self.label_size = config.label_size
+        self.nvar = config.nvar
         self.valid_required = True
         # For debug on Windows
         if os.name == 'nt':
@@ -77,6 +79,7 @@ class network(object):
         '''
         Prepare train/test data
         '''
+        mean, std = get_stats(self.tr_data_dir, self.va_data_dir, self.nvar)
         trans = [
                  # # For Cropped input
                  # Crop((0, 0), (440, 1024)), # should be 439x1024
@@ -94,7 +97,7 @@ class network(object):
                  CustomPad((math.ceil((self.crop_size[1] - self.label_size[1])/2), 0, math.ceil((self.crop_size[1] - self.label_size[1])/2), 0), 'circular'), 
                  CustomPad((0, math.ceil((self.crop_size[0] - self.label_size[0])/2), 0, math.ceil((self.crop_size[0] - self.label_size[0])/2)), 'zero', constant_values=0), 
                  GroupRandomCrop(self.crop_size, label_size=self.label_size), 
-                 Normalize(mean=.5),
+                 Normalize(mean, std),
                  ToTensor()
 
                  # transforms.ToPILImage(), 
@@ -435,140 +438,6 @@ class network(object):
         plt.show()
 
 
-    def sanity_check_no_randcrop(self):
-        '''
-        Sanity check without random crop
-        '''
-        self.load_writer()
-        self.load_model()
-
-        self.data_tr = Astrodata(self.tr_data_dir, 
-                            min_step_diff = self.min_step_diff, 
-                            max_step_diff = self.max_step_diff, 
-                            rtn_log_grid = False) # RandomCrop is group op
-
-        self.data_va = Astrodata(self.va_data_dir, 
-                            min_step_diff = self.min_step_diff, 
-                            max_step_diff = self.max_step_diff, 
-                            rtn_log_grid = False) # RandomCrop is group op
-        pad = transforms.Compose([CustomPad((8, 0, 8, 0), 'circular'), 
-                                  CustomPad((0, 8, 0, 8), 'zero', constant_values=0)])
-        random_crop = GroupRandomCrop(self.crop_size, label_size=self.label_size)
-        to_tensor = ToTensor()
-
-        i0, i1, label = self.data_tr[np.random.randint(0, len(self.data_tr)-1)]
-        # Shrink to label size
-        i0 = cv2.resize(i0, dsize=self.label_size, interpolation=cv2.INTER_LINEAR)
-        i1 = cv2.resize(i1, dsize=self.label_size, interpolation=cv2.INTER_LINEAR)
-        i1_crop = np.array(i1) # for output calculation
-        label = cv2.resize(label, dsize=self.label_size, interpolation=cv2.INTER_LINEAR)
-        # Pad inputs back to input size
-        i0 = pad(i0)
-        i1 = pad(i1)
-        i0 = to_tensor(i0)
-        i1 = to_tensor(i1)
-        i1_crop = to_tensor(i1_crop)
-        label = to_tensor(label)
-        duo = torch.unsqueeze(torch.cat([i0, i1], dim=0), 0)
-        duo, label, i1_crop = duo.to(self.device), label.to(self.device), i1_crop.to(self.device)
-
-        self.model.train()
-
-        for iter_id in range(1):
-            output = self.model(duo)
-            # if output2 is not None:
-            #     print(output-output2)
-            #     output2 = None
-            loss = self.criterion(output + i1_crop, torch.unsqueeze(label, 0))
-            self.optimizer.zero_grad()
-            loss.backward()
-            self.optimizer.step()
-            print("step{}, loss: {}".format(self.step, loss.item()))
-            # print(duo - a)
-            if self.step % 5 == 0:
-                print("\nvalid:")
-                # print(self.model.state_dict().keys())
-                # print(self.model.state_dict()['layer1.0.bn.running_mean'])
-                self.model.eval()
-                with torch.no_grad():
-                    output2 = self.model(duo)
-                    valid_loss = self.criterion(output2 + i1_crop, torch.unsqueeze(label, 0))
-                    print("valid loss: {}".format(valid_loss.item()))
-                self.model.train()
-                self.writer.add_scalar('Train/Loss', loss.item(), self.step)
-                self.writer.add_scalar('Valid/Loss', valid_loss, self.step)
-                # print(self.model.state_dict()['layer1.0.bn.running_mean'])
-            self.step += 1
-        # visualize overfit result
-        var=1
-        self.model.eval()
-        i1_crop = i1_crop
-        with torch.no_grad():
-            output = self.model(duo)
-            out = output[0] + i1_crop
-        # pdb.set_trace()
-        self.writer.add_image('i0', i0[var], dataformats='HW')
-        self.writer.add_image('gt', label[var], dataformats='HW')
-        self.writer.add_image('synthesized', out[var], dataformats='HW')
-        self.writer.add_image('i1_unpadded', i1_crop[var], dataformats='HW')
-
-        self.save()
-
-    def single_batch_train(self):
-        '''
-        Overfit over one batch, for loss check only
-        '''
-        output2 = None
-
-        print("\ntrain:")
-        self.model.train()
-        for b_id, (i0, i1, label) in enumerate(self.train_loader):
-            input1 = i0
-            i1_crop = i1[:,:,self.ltl[0]:self.lbr[0],self.ltl[1]:self.lbr[1]]
-            duo = torch.cat([i0, i1], dim=1)
-            duo, label, i1_crop = duo.to(self.device), label.to(self.device), i1_crop.to(self.device)
-            # a = torch.tensor(duo)
-            break
-        for iter_id in range(400):
-            output = self.model(duo)
-            # if output2 is not None:
-            #     print(output-output2)
-            #     output2 = None
-            loss = self.criterion(output + i1_crop, label)
-            self.optimizer.zero_grad()
-            loss.backward()
-            self.optimizer.step()
-            print("step{}, loss: {}".format(self.step, loss.item()))
-            # print(duo - a)
-            if self.step % 5 == 0:
-                print("\nvalid:")
-                # print(self.model.state_dict().keys())
-                # print(self.model.state_dict()['layer1.0.bn.running_mean'])
-                self.model.eval()
-                with torch.no_grad():
-                    output2 = self.model(duo)
-                    valid_loss = self.criterion(output2 + i1_crop, label)
-                    print("batch{}, loss: {}".format(b_id, valid_loss.item()))
-                self.model.train()
-                self.writer.add_scalar('Train/Loss', loss.item(), self.step)
-                self.writer.add_scalar('Valid/Loss', valid_loss, self.step)
-                # print(self.model.state_dict()['layer1.0.bn.running_mean'])
-            self.step += 1
-        self.save()
-        # visualize overfit result
-        var=1
-        self.model.eval()
-        i1_crop = i1_crop[0]
-        with torch.no_grad():
-            output = self.model(duo)
-            out = output[0] + i1_crop
-        # pdb.set_trace()
-        self.writer.add_image('step2.1/i0_randcrop', input1[0,var], dataformats='HW')
-        self.writer.add_image('step2.2/gt_randcrop', label[0,var], dataformats='HW')
-        self.writer.add_image('step4/synthetic', out[var], dataformats='HW')
-        self.writer.add_image('step5/i1_centercrop', i1_crop[var], dataformats='HW')
-
-
     def train(self, valid = True):
         '''
         Train the model
@@ -728,7 +597,7 @@ class network(object):
         # print("Checkpoint removed upon training complete")
 
 
-    def test_single(self, triplet_id = None, step_diff = None, audience='astro'):
+    def test_single(self, triplet_id = None, step_diff = None, audience = 'astro', dataset = 'va'):
         '''
         Visualize using trained model
         triplet_id: triplet index to use, default will be random
@@ -737,9 +606,6 @@ class network(object):
         '''
         var = 1
         n_row = 5
-        # Randomly choose triplet if not given
-        if not triplet_id:
-            triplet_id = np.random.randint(0, len(data_tr)-1)
         if step_diff:
             self.min_step_diff = step_diff[0]
             self.max_step_diff = step_diff[1]
@@ -756,8 +622,14 @@ class network(object):
                             max_step_diff = self.max_step_diff, 
                             rtn_log_grid = False, 
                             verbose = True) # RandomCrop is group op
+        # Randomly choose triplet if not given
+        if not triplet_id and triplet_id != 0:
+            triplet_id = np.random.randint(0, len(data_tr)-1)
         # Fetch triplets and transform
-        i0, i1, label, info_dict = data_va[triplet_id]
+        if dataset == 'tr':
+            i0, i1, label, info_dict = data_tr[triplet_id]
+        else:
+            i0, i1, label, info_dict = data_va[triplet_id]
         # tran = transforms.Compose([
         #                           # Crop((0, 0), (440, 1024)), 
         #                           Resize(self.input_size), 
@@ -773,12 +645,11 @@ class network(object):
         # i0_sized = resize(i0)
         # i1_sized = resize(i1)
         # label_sized = resize(label)
-
-        norm = Normalize(mean=.5)
+        mean, std = get_stats(self.tr_data_dir, self.va_data_dir, self.nvar)
+        norm = Normalize(mean, std)
         i0_normed = norm(np.array(i0))
         i1_normed = norm(np.array(i1))
         label_normed = norm(np.array(label))
-
         # self.writer.add_images('triplet', np.expand_dims(np.stack([i0[:,:,var], label[:,:,var], i1[:,:,var]]), 3), dataformats='NHWC')
         self.writer.add_images('i0', i0[:,:,var], dataformats='HW')
         self.writer.add_images('i1', i1[:,:,var], dataformats='HW')
@@ -817,9 +688,9 @@ class network(object):
 
         # Visualize and add to summary
         # Prepare data
-        out = out[var]
-        residue = residue[var]
-        original_diff = original_diff[var]
+        out = out[var] * std[var] + mean[var]
+        residue = residue[var] * std[var] + mean[var]
+        original_diff = original_diff[var] * std[var] + mean[var]
         i0 = i0[:,:,var]
         i1 = i1[:,:,var]
         label = label[:,:,var]
@@ -875,13 +746,11 @@ class network(object):
             plt.imshow(original_diff, vmin = vmin, vmax = vmax)
             plt.colorbar()
 
-        norm = Normalize()
-        self.writer.add_image('residue', norm(residue), dataformats='HW')
-        self.writer.add_image('synthetic', norm(out), dataformats='HW')
-        self.writer.add_image('resized_i0', i0_normed[var], dataformats='HW')
-        self.writer.add_image('resized_i1', i1_normed[var], dataformats='HW')
-        self.writer.add_image('resized_label', label_normed[var], dataformats='HW')
-
+        self.writer.add_image('residue', residue + 0.5, dataformats='HW')
+        self.writer.add_image('synthetic', out + 0.5, dataformats='HW')
+        self.writer.add_image('resized_i0', i0, dataformats='HW')
+        self.writer.add_image('resized_i1', i1, dataformats='HW')
+        self.writer.add_image('resized_label', label, dataformats='HW')
 
         # plt.savefig("a.png")
         print("triplet id: ", triplet_id)
@@ -889,10 +758,29 @@ class network(object):
         print("Image_t0_idx: {}, Image_t1_idx: {}, label_idx: {}".format(info_dict["img1_idx"], info_dict["img2_idx"], info_dict["label_idx"]))
         print("Residue sum: ", torch.sum(torch.abs(residue)))
         print("Original diff: ", torch.sum(torch.abs(original_diff)))
+        print("PSNR: ", self.psnr(label, (np.asarray(out) + 0.5), 1))
         plt.show()
 
 
+    def psnr(self, orig, noisy, max_possible=1):
+        '''
+        orig: original img
+        noisy: synthesized img
+        max_possible: max 
+        Calculate PSNR
+        '''
+        mse = np.mean((orig - noisy) ** 2)
+        if mse == 0:
+            return "Inf"
+        PIXEL_MAX = max_possible
+
+        return 20 * np.log10(PIXEL_MAX / np.sqrt(mse))
+
+
     def clean_up(self):
+        '''
+        Clean up the network outputs and summary
+        '''
         if Path(self.model_dir).exists():
             os.remove(self.model_dir)
         if Path(self.checkpoint).exists():
