@@ -10,12 +10,11 @@ class Astrodata(Dataset):
     Astro dataset class
     ''' 
 
-    def __init__(self, data_dir, min_step_diff = None, max_step_diff = None, rtn_log_grid = False, transforms = None, verbose = False):
+    def __init__(self, data_dir, min_step_diff = None, max_step_diff = None, transforms = None, verbose = False):
         '''
         transforms: transformations to apply on imgs
         data_dir: directory to .h5 file
         min_step_diff, max_step_diff: min/max step difference
-        rtn_log_grid: return log_grid or not
         verbose: print out debug info
         '''
         # self.data = h5py.File(data_dir, 'r')
@@ -26,7 +25,6 @@ class Astrodata(Dataset):
             self.d_steps = [len(data[d_name].keys()) - 1 for d_name in self.d_names]
         self.min_step_diff = min_step_diff
         self.max_step_diff = max_step_diff
-        self.rtn_log_grid = rtn_log_grid
         self.transforms = transforms
         self.verbose = verbose
 
@@ -75,10 +73,7 @@ class Astrodata(Dataset):
                 h = transform(h)
                 m = transform(m)
 
-        ret = []
-        if self.rtn_log_grid:
-            ret.append(log_grid)
-        ret.extend([l, h, m])
+        ret = [l, h, m]
         # Verbose mode, return disk name, img indexes
         if self.verbose:
             ret.append({"disk_name": d, 

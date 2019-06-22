@@ -52,8 +52,11 @@ class network(object):
         self.nvar = config.nvar
         self.num_workers = config.num_workers
         self.valid_required = True
+        self.pin_memory = True
+        self.non_blocking = True 
         # For debug on Windows
         if os.name == 'nt':
+            self.pin_memory = False
             self.data_dir = str(config.h5_dir_win)
             self.batch_size = 2
             self.valid_required = False
@@ -112,14 +115,12 @@ class network(object):
 
         self.data_tr = Astrodata(self.tr_data_dir, 
                             min_step_diff = self.min_step_diff, 
-                            max_step_diff = self.max_step_diff, 
-                            rtn_log_grid = False, 
+                            max_step_diff = self.max_step_diff,
                             transforms = trans) # RandomCrop is group op
 
         self.data_va = Astrodata(self.va_data_dir, 
                             min_step_diff = self.min_step_diff, 
                             max_step_diff = self.max_step_diff, 
-                            rtn_log_grid = False, 
                             transforms = trans) # RandomCrop is group op
 
         # Randomly shuffle and split data to train/valid
@@ -135,12 +136,14 @@ class network(object):
                                        batch_size = self.batch_size,
                                        num_workers= self.num_workers, 
                                        # sampler = train_sampler, 
-                                       shuffle = True)
+                                       shuffle = True, 
+                                       pin_memory = self.pin_memory)
         self.valid_loader = DataLoader(self.data_va, 
                                        batch_size = self.batch_size, 
                                        num_workers = self.num_workers, 
                                        # sampler = valid_sampler, 
-                                       shuffle = True)
+                                       shuffle = True, 
+                                       pin_memory = self.pin_memory)
 
 
     def load_model(self):
@@ -175,13 +178,13 @@ class network(object):
 
         self.data_tr = Astrodata(self.tr_data_dir, 
                             min_step_diff = 40, 
-                            max_step_diff = self.max_step_diff, 
-                            rtn_log_grid = False)
+                            max_step_diff = self.max_step_diff
+                            )
 
         self.data_va = Astrodata(self.va_data_dir, 
                             min_step_diff = 40, 
-                            max_step_diff = self.max_step_diff, 
-                            rtn_log_grid = False)
+                            max_step_diff = self.max_step_diff,
+                            )
         tran = transforms.Compose([
                                   Resize(self.input_size), 
                                   Normalize(mean=.5), 
@@ -247,13 +250,13 @@ class network(object):
 
         self.data_tr = Astrodata(self.tr_data_dir, 
                             min_step_diff = 40, 
-                            max_step_diff = self.max_step_diff, 
-                            rtn_log_grid = False)
+                            max_step_diff = self.max_step_diff
+                            )
 
         self.data_va = Astrodata(self.va_data_dir, 
                             min_step_diff = 40, 
-                            max_step_diff = self.max_step_diff, 
-                            rtn_log_grid = False)
+                            max_step_diff = self.max_step_diff
+                            )
         tran = transforms.Compose([
                                   Resize(self.input_size), 
                                   Normalize(mean=.5), 
@@ -346,13 +349,13 @@ class network(object):
 
         self.data_tr = Astrodata(self.tr_data_dir, 
                             min_step_diff = 40, 
-                            max_step_diff = self.max_step_diff, 
-                            rtn_log_grid = False)
+                            max_step_diff = self.max_step_diff
+                            )
 
         self.data_va = Astrodata(self.va_data_dir, 
                             min_step_diff = self.min_step_diff, 
-                            max_step_diff = self.max_step_diff, 
-                            rtn_log_grid = False)
+                            max_step_diff = self.max_step_diff
+                            )
         tran = transforms.Compose([
                                   Resize(self.input_size), 
                                   Normalize(mean=.5), 
@@ -451,11 +454,11 @@ class network(object):
         start = time.time()
         train_loss = 0
         for b_id, (i0, i1, label) in enumerate(self.train_loader):
-            # Only cut i1 for err calc
-            i1_crop = i1[:,:,self.ltl[0]:self.lbr[0],self.ltl[1]:self.lbr[1]]
             # Concatenate two imgs
-            duo = torch.cat([i0, i1], dim=1)
-            duo, label, i1_crop = duo.to(self.device), label.to(self.device), i1_crop.to(self.device)
+            label, _i0, _i1 = label.to(self.device, non_blocking = self.non_blocking), i0.to(self.device, non_blocking = self.non_blocking), i1.to(self.device, non_blocking = self.non_blocking)
+            # Only cut i1 for err calc
+            i1_crop = _i1[:,:,self.ltl[0]:self.lbr[0],self.ltl[1]:self.lbr[1]]
+            duo = torch.cat([_i0, _i1], dim=1)
             output = self.model(duo)
             # print(self.model.state_dict().keys())
             loss = self.criterion(output + i1_crop, label)
@@ -612,13 +615,11 @@ class network(object):
         data_tr = Astrodata(self.tr_data_dir, 
                             min_step_diff = self.min_step_diff, 
                             max_step_diff = self.max_step_diff, 
-                            rtn_log_grid = False, 
                             verbose = True) # RandomCrop is group op
 
         data_va = Astrodata(self.va_data_dir, 
                             min_step_diff = self.min_step_diff, 
                             max_step_diff = self.max_step_diff, 
-                            rtn_log_grid = False, 
                             verbose = True) # RandomCrop is group op
         # Randomly choose triplet if not given
         if not triplet_id and triplet_id != 0:

@@ -202,21 +202,13 @@ class GroupRandomCrop(object):
         size: height x width
         label_size: label image size
         '''
-        assert isinstance(size, (int, tuple)), "Size must be an int or tuple"
-        assert isinstance(label_size, (int, tuple)), \
-            "Label image size must be an int or tuple"
-
         if isinstance(size, int):
             self.size = (size, size)
         else:
-            assert len(size) == 2, \
-            'Crop output size length must be an integer or a 2-element tuple'
             self.size = size
         if isinstance(label_size, int):
             self.label_size = (label_size, label_size)
         else:
-            assert len(label_size) == 2, \
-            'Label image output size must be an integer or a 2-element tuple'
             self.label_size = label_size
 
         self.inner_pad_size = (int(0.5 * (self.size[0] - self.label_size[0])), int(0.5 * (self.size[1] - self.label_size[1])))
@@ -263,17 +255,18 @@ class GroupRandomCrop(object):
         if self.size[0] > h or self.size[1] > w:
             raise ValueError(
                 "Crop output size {}x{} must be <= {}x{}, or pad more first".format(self.size[0], self.size[1], h, w))
-        # import pdb
-        # pdb.set_trace()
+
         i, j = self.get_params(h, w)
+        br = (i+self.size[0], j+self.size[1])
+
         if not self.numpy_mode:
-            return low.crop((j, i, j+self.size[1], i+self.size[0])), \
-            high.crop((j, i, j+self.size[1], i+self.size[0])), \
-            mid.crop((j+self.inner_pad_size[1], i+self.inner_pad_size[0], j+self.label_size[1], i+self.label_size[0]))
-        # print("crop location upper left: {}, {}".format(i, j))
-        return low[i:i+self.size[0], j:j+self.size[1]], \
-        high[i:i+self.size[0], j:j+self.size[1]], \
-        mid[i+self.inner_pad_size[0]:i+self.inner_pad_size[0]+self.label_size[0], j+self.inner_pad_size[1]:j+self.inner_pad_size[1]+self.label_size[1]]
+            return low.crop((j, i, br[1], br[0])), \
+                   high.crop((j, i, br[1], br[0])), \
+                   mid.crop((j+self.inner_pad_size[1], i+self.inner_pad_size[0], j+self.label_size[1], i+self.label_size[0]))
+
+        return low[i:br[0], j:br[1]], \
+               high[i:br[0], j:j+br[1]], \
+               mid[i+self.inner_pad_size[0]:i+self.inner_pad_size[0]+self.label_size[0], j+self.inner_pad_size[1]:j+self.inner_pad_size[1]+self.label_size[1]]
 
     def __repr__(self):
         return self.__class__.__name__ + '(size={0}, label_size={})'.format(self.size, self.label_size)
