@@ -438,7 +438,7 @@ class network(object):
         plt.show()
 
 
-    def train(self, valid = True):
+    def train(self):
         '''
         Train the model
         epoch_loss: total train loss
@@ -446,28 +446,25 @@ class network(object):
         print("\ntrain:")
         self.model.train()
         start = time.time()
+        train_loss = 0
         for b_id, (i0, i1, label) in enumerate(self.train_loader):
             # Only cut i1 for err calc
             i1_crop = i1[:,:,self.ltl[0]:self.lbr[0],self.ltl[1]:self.lbr[1]]
-            # Concatenate two input imgs in NCHW format
+            # Concatenate two imgs
             duo = torch.cat([i0, i1], dim=1)
             duo, label, i1_crop = duo.to(self.device), label.to(self.device), i1_crop.to(self.device)
             output = self.model(duo)
             # print(self.model.state_dict().keys())
-            # Avg per img loss: Err = f(I0,I1) + I1 - I0.5
             loss = self.criterion(output + i1_crop, label)
             self.optimizer.zero_grad()
             loss.backward()
             self.optimizer.step()
-            print("step{}, loss: {:.4f}".format(self.step, loss.item()))
-
-            if self.step % 10 == 0 and valid:
-                valid_result = self.valid()
-                self.model.train()
-                self.writer.add_scalar('Train/Loss', loss.item(), self.step)
-                self.writer.add_scalar('Valid/Loss', valid_result, self.step)
+            train_loss += loss.item()
             self.step += 1
+            print("step{}, loss: {:.4f}".format(self.step, loss.item()))
         print(time.time() - start)
+
+        return train_loss
 
     def valid(self):
         '''
@@ -476,7 +473,6 @@ class network(object):
         print("\nvalid:")
         self.model.eval()
         valid_loss = 0
-        num_batch = 0
 
         with torch.no_grad():
             for b_id, (i0, i1, label) in enumerate(self.valid_loader):
@@ -486,16 +482,12 @@ class network(object):
                 duo = torch.cat([i0, i1], dim=1)
                 duo, label, i1_crop = duo.to(self.device), label.to(self.device), i1_crop.to(self.device)
                 output = self.model(duo)
-                # Err = f(I0,I1) + I1 - I0.5
                 # L1 Loss
                 loss = self.criterion(output + i1_crop, label)
                 valid_loss += loss.item()
                 print("batch{}, loss: {}".format(b_id, loss.item()))
-                num_batch = b_id + 1
-                if b_id == 5:
+                if b_id == 20:
                     break
-
-        valid_loss /= num_batch
 
         return valid_loss
 
@@ -578,11 +570,14 @@ class network(object):
         for epoch in range(start_epoch, self.epochs + 1):
             # self.scheduler.step(epoch)
             print("\n===> epoch: {}/{}".format(epoch, self.epochs))
-            train_result = self.train(valid = self.valid_required)
-            # print("Epoch {} loss: {}".format(epoch, train_result))
-            # accuracy = max(accuracy, valid_result[1])
+            train_result = self.train()
+            print("Epoch {} loss: {}".format(epoch, train_result))
             # test_result = self.test()
-            # accuracy = max(accuracy, test_result[1])
+            if epoch % 1 == 0 and self.valid_required:
+                valid_result = self.valid()
+                self.model.train()
+                self.writer.add_scalar('Train/Loss', train_result, self.step)
+                self.writer.add_scalar('Valid/Loss', valid_result, self.step)
             # Save checkpoint periodically
             if epoch % self.checkpoint_freq == 0:
                 self.save_checkpoint(accuracy, epoch)
