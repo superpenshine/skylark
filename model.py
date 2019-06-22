@@ -62,24 +62,12 @@ class ResNet(nn.Module):
         super(ResNet, self).__init__()
         self.fan_in = 64
         self.conv1 = ConvBlock(8, 64, bias=True)
-        # self.layer1 = self._make_layer1(64, 128)
-        # self.layer2 = self._make_layer1(128, 256)
-        # self.layer3 = self._make_layer1(256, 512)
-        self.layer1 = self._make_layer2(ResUnit, 128, 1)
-        self.layer2 = self._make_layer2(ResUnit, 256, 1)
-        self.layer3 = self._make_layer2(ResUnit, 512, 1)
+        self.layer1 = self._make_layer(ResUnit, 128, 1)
+        self.layer2 = self._make_layer(ResUnit, 256, 1)
+        self.layer3 = self._make_layer(ResUnit, 512, 1)
         self.out_conv = ConvBlock(512 * ResUnit.expansion, 4, bias=True)
 
-    # def _make_layer1(self, fan_in, fan_out, **kwargs):
-    #     '''
-    #     Construct major layers with ResUnit
-    #     '''
-    #     layers = []
-    #     layers.append(ResUnit(fan_in, fan_out, **kwargs))
-
-    #     return nn.Sequential(*layers)
-
-    def _make_layer2(self, block, fan_out, blocks, stride=1, **kwargs):
+    def _make_layer(self, block, fan_out, blocks, stride=1, **kwargs):
         '''
         Construct major layers ResNetxx like
         '''

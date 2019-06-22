@@ -173,6 +173,23 @@ class Crop(object):
         return img[self.tl[0]:self.br[0], self.tl[1]:self.br[1]]
 
 
+class chan():
+    '''
+    Return a channel as output
+    '''
+    def __init__(self, chan):
+        self.chan = chan
+
+    def __call__(self, img):
+        if isinstance(img, np.ndarray):
+            return img[:,:,self.chan]
+        if isinstance(img, torch.Tensor):
+            return img[self.chan]
+        
+        raise ValueError(
+            "To pick a channel, input img must be either an ndarray or torch tensor")
+
+
 class GroupRandomCrop(object):
     '''
     Return a random crop at the same position of three input imgs

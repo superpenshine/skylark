@@ -12,7 +12,7 @@ import matplotlib.pyplot as plt
 from model import ResNet18, ResNet
 from pathlib import Path
 from util.data_util import get_stats
-from util.transform import CustomPad, GroupRandomCrop, ToTensor, Resize, LogPolartoPolar, Normalize, Crop
+from util.transform import *
 from dataset.Astrodata import Astrodata
 
 import torch
@@ -56,7 +56,7 @@ class network(object):
             self.batch_size = 2
             self.valid_required = False
             self.epochs = 1
-            self.min_step_diff = 74
+            self.min_step_diff = 60
 
         # Inferenced parameter
         self.tr_data_dir = Path(self.data_dir + "_tr.h5")
@@ -684,38 +684,59 @@ class network(object):
             output = self.model(duo)
             out = output[0] + i1_normed
             residue = out - label_normed
-            original_diff = i1_normed - label_normed
 
         # Visualize and add to summary
-        # Prepare data
-        out = out[var] * std[var] + mean[var]
-        residue = residue[var] * std[var] + mean[var]
-        original_diff = original_diff[var] * std[var] + mean[var]
-        i0 = i0[:,:,var]
-        i1 = i1[:,:,var]
-        label = label[:,:,var]
-        # default dpi 6.4, 4.8
-        # plt.figure(figsize=(20, 4), dpi=200).
+        pick = chan(var)
+
+        out_unormed = pick(out) * std[var] + mean[var]
+        residue_unormed = np.array(out_unormed) - pick(label)
+        original_diff = i0 - label
+        original_diff = pick(original_diff)
+        i0 = pick(i0)
+        i1 = pick(i1)
+        label = pick(label)
+        # plt.figure(figsize=(20, 4), dpi=200) # default dpi 6.4, 4.8
         if audience == 'astro':
-            plt.subplot(241)
+            plt.subplot(251)
             plt.title('i0')
             plt.imshow(i0)
             plt.colorbar()
-            plt.subplot(242)
+            plt.subplot(252)
             plt.title('i1')
             plt.imshow(i1)
             plt.colorbar()
-            plt.subplot(243)
+            plt.subplot(253)
             plt.title('GT')
             plt.imshow(label) 
             plt.colorbar() 
-            plt.subplot(244)
+            plt.subplot(254)
             plt.title('Out')
-            plt.imshow(out)
+            plt.imshow(out_unormed)
             plt.colorbar()
-            plt.subplot(248)
-            plt.title('Residue(Out-Normalize(GT))')
-            plt.imshow(residue)
+            plt.subplot(255)
+            plt.title('Residue')
+            plt.imshow(residue_unormed)
+            plt.colorbar()
+
+            plt.subplot(256)
+            plt.title('i0_normed')
+            plt.imshow(pick(i0_normed))
+            plt.colorbar()
+            plt.subplot(257)
+            plt.title('i1_normed')
+            plt.imshow(pick(i1_normed))
+            plt.colorbar()
+            plt.subplot(258)
+            plt.title('GT_normed')
+            plt.imshow(pick(label_normed))
+            plt.colorbar()
+            plt.subplot(259)
+            plt.title('Out_normed')
+            plt.imshow(pick(out))
+            plt.colorbar()
+            plt.subplot(2, 5, 10)
+            plt.title('Residue_normed')
+            plt.imshow(pick(residue))
             plt.colorbar()
         elif audience == 'cs':
             plt.subplot(241)
@@ -724,30 +745,30 @@ class network(object):
             plt.colorbar() 
             plt.subplot(242)
             plt.title('Out')
-            plt.imshow(out)
+            plt.imshow(out_unormed)
             plt.colorbar()
             plt.subplot(243)
             plt.title('i1_cropped')
-            plt.imshow(i1_normed[var])
+            plt.imshow(pick(i1_normed))
             plt.colorbar()
             # Calculate max/min of resudue & original difference together
-            vmax = max(torch.max(residue), torch.max(original_diff))
-            vmin = min(torch.min(residue), torch.min(original_diff))
+            vmax = max(np.amax(residue_unormed), np.amax(original_diff))
+            vmin = min(np.amin(residue_unormed), np.amin(original_diff))
             plt.subplot(244)
             plt.title('Out-GT(rescaled)')
-            plt.imshow(residue, vmin = vmin, vmax = vmax)
+            plt.imshow(residue_unormed, vmin = vmin, vmax = vmax)
             plt.colorbar()
             plt.subplot(247)
             plt.title('Out-GT')
-            plt.imshow(residue)
+            plt.imshow(residue_unormed)
             plt.colorbar()
             plt.subplot(248)
             plt.title('i1_cropped-GT(rescaled)')
             plt.imshow(original_diff, vmin = vmin, vmax = vmax)
             plt.colorbar()
 
-        self.writer.add_image('residue', residue + 0.5, dataformats='HW')
-        self.writer.add_image('synthetic', out + 0.5, dataformats='HW')
+        self.writer.add_image('residue', residue_unormed + 0.5, dataformats='HW')
+        self.writer.add_image('synthetic', out_unormed + 0.5, dataformats='HW')
         self.writer.add_image('resized_i0', i0, dataformats='HW')
         self.writer.add_image('resized_i1', i1, dataformats='HW')
         self.writer.add_image('resized_label', label, dataformats='HW')
@@ -756,10 +777,11 @@ class network(object):
         print("triplet id: ", triplet_id)
         print("disk name: ", info_dict["disk_name"])
         print("Image_t0_idx: {}, Image_t1_idx: {}, label_idx: {}".format(info_dict["img1_idx"], info_dict["img2_idx"], info_dict["label_idx"]))
-        print("Residue sum: ", torch.sum(torch.abs(residue)))
-        print("Original diff: ", torch.sum(torch.abs(original_diff)))
-        print("PSNR: ", self.psnr(label, (np.asarray(out) + 0.5), 1))
+        print("Residue sum: ", np.sum(np.abs(residue_unormed)))
+        print("Original diff: ", np.sum(np.abs(original_diff)))
+        print("PSNR: ", self.psnr(label, (np.asarray(out_unormed) + 0.5), 1))
         plt.show()
+
 
 
     def psnr(self, orig, noisy, max_possible=1):

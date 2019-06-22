@@ -157,8 +157,8 @@ def main(config):
     # Check if directories exist and create them if necessary
     if not os.path.exists(config.todo_dir):
         os.makedirs(config.todo_dir)
-    if not os.path.exists(config.done_dir):
-        os.makedirs(config.done_dir)
+    # if not os.path.exists(config.done_dir):
+    #     os.makedirs(config.done_dir)
     if not os.path.exists(config.output_dir):
         os.makedirs(config.output_dir)
 
