@@ -60,8 +60,12 @@ sys_arg.add_argument("--lr", type=float,
                     help="Learning rate")
 
 sys_arg.add_argument("--epochs", type=int,
-                    default=400,
+                    default=1000,
                     help="Number of epochs")
+
+sys_arg.add_argument("--num_workers", type=int,
+                    default=16,
+                    help="Number of dataloader workers")
 
 sys_arg.add_argument("--f_gird", type=Path,
                     default='log_grid.dat',
@@ -103,6 +107,10 @@ sys_arg.add_argument("--label_size", type=tuple,
 sys_arg.add_argument("--checkpoint_freq", type=int, 
                     default=1, 
                     help="Number of epochs between each checkpoint")
+
+sys_arg.add_argument("--report_freq", type=int, 
+                    default=1, 
+                    help="Number of epochs between each summary write")
 
 sys_arg.add_argument("--cuda", type=bool, 
                     default=is_available(), 

@@ -45,10 +45,12 @@ class network(object):
         self.epochs = config.epochs
         self.batch_size = config.batch_size
         self.checkpoint_freq = config.checkpoint_freq
+        self.report_freq = config.report_freq
         self.input_size = config.input_size
         self.crop_size = config.crop_size
         self.label_size = config.label_size
         self.nvar = config.nvar
+        self.num_workers = config.num_workers
         self.valid_required = True
         # For debug on Windows
         if os.name == 'nt':
@@ -57,6 +59,7 @@ class network(object):
             self.valid_required = False
             self.epochs = 1
             self.min_step_diff = 60
+            self.num_workers = 8
 
         # Inferenced parameter
         self.tr_data_dir = Path(self.data_dir + "_tr.h5")
@@ -130,12 +133,12 @@ class network(object):
 
         self.train_loader = DataLoader(self.data_tr, 
                                        batch_size = self.batch_size,
-                                       num_workers=8, 
+                                       num_workers= self.num_workers, 
                                        # sampler = train_sampler, 
                                        shuffle = True)
         self.valid_loader = DataLoader(self.data_va, 
                                        batch_size = self.batch_size, 
-                                       num_workers=8, 
+                                       num_workers = self.num_workers, 
                                        # sampler = valid_sampler, 
                                        shuffle = True)
 
@@ -573,7 +576,7 @@ class network(object):
             train_result = self.train()
             print("Epoch {} loss: {}".format(epoch, train_result))
             # test_result = self.test()
-            if epoch % 1 == 0 and self.valid_required:
+            if epoch % self.report_freq == 0 and self.valid_required:
                 valid_result = self.valid()
                 self.model.train()
                 self.writer.add_scalar('Train/Loss', train_result, self.step)
