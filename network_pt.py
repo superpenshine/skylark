@@ -63,7 +63,7 @@ class network(object):
             self.valid_required = False
             self.epochs = 2
             self.min_step_diff = 60
-            self.num_workers = 8
+            self.num_workers = 1
 
         # Inferenced parameter
         self.tr_data_dir = Path(self.data_dir + "_tr.h5")
@@ -456,19 +456,20 @@ class network(object):
         train_loss = 0
         for b_id, (i0, i1, label) in enumerate(self.train_loader):
             # Concatenate two imgs
-            label, _i0, _i1 = label.to(self.device, non_blocking = self.non_blocking), i0.to(self.device, non_blocking = self.non_blocking), i1.to(self.device, non_blocking = self.non_blocking)
-            # Only cut i1 for err calc
-            i1_crop = _i1[:,:,self.ltl[0]:self.lbr[0],self.ltl[1]:self.lbr[1]]
-            duo = torch.cat([_i0, _i1], dim=1)
-            output = self.model(duo)
-            # print(self.model.state_dict().keys())
-            loss = self.criterion(output + i1_crop, label)
-            self.optimizer.zero_grad()
-            loss.backward()
-            self.optimizer.step()
-            train_loss += loss.item()
-            self.step += 1
-            print("step{}, loss: {:.4f}".format(self.step, loss.item()))
+            # label, _i0, _i1 = label.to(self.device, non_blocking = self.non_blocking), i0.to(self.device, non_blocking = self.non_blocking), i1.to(self.device, non_blocking = self.non_blocking)
+            # # Only cut i1 for err calc
+            # i1_crop = _i1[:,:,self.ltl[0]:self.lbr[0],self.ltl[1]:self.lbr[1]]
+            # duo = torch.cat([_i0, _i1], dim=1)
+            # output = self.model(duo)
+            # # print(self.model.state_dict().keys())
+            # loss = self.criterion(output + i1_crop, label)
+            # self.optimizer.zero_grad()
+            # loss.backward()
+            # self.optimizer.step()
+            # train_loss += loss.item()
+            # self.step += 1
+            # print("step{}, loss: {:.4f}".format(self.step, loss.item()))
+            pass
         print(time.time() - start)
 
         return train_loss
