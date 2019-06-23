@@ -53,14 +53,15 @@ class network(object):
         self.num_workers = config.num_workers
         self.valid_required = True
         self.pin_memory = True
-        self.non_blocking = True 
+        self.non_blocking = False 
         # For debug on Windows
         if os.name == 'nt':
+            self.non_blocking = False
             self.pin_memory = False
             self.data_dir = str(config.h5_dir_win)
             self.batch_size = 2
             self.valid_required = False
-            self.epochs = 1
+            self.epochs = 2
             self.min_step_diff = 60
             self.num_workers = 8
 
@@ -471,6 +472,7 @@ class network(object):
         print(time.time() - start)
 
         return train_loss
+
 
     def valid(self):
         '''
