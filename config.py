@@ -34,7 +34,7 @@ sys_arg.add_argument("--data_dir", type=Path,
 sys_arg.add_argument("--h5_dir_win", type=Path,
                     # default='D:/sigma_data/data_polar',
                     # default='D:/sigma_data/data_logpolar',
-                    default='D:/sigma_data/data_logpolar_resized',
+                    default='C:/sigma_data/data_logpolar_resized',
                     help="Win data file without the .h5 suffix")
 
 sys_arg.add_argument("--h5_dir_linux", type=Path,
@@ -52,7 +52,7 @@ sys_arg.add_argument("--max_step_diff", type=int,
                     help="None or an integer indicating max step difference")
 
 sys_arg.add_argument("--batch_size", type=int,
-                    default=50,
+                    default=100,
                     help="Batch size")
 
 sys_arg.add_argument("--lr", type=float,
@@ -64,7 +64,7 @@ sys_arg.add_argument("--epochs", type=int,
                     help="Number of epochs")
 
 sys_arg.add_argument("--num_workers", type=int,
-                    default=16,
+                    default=1,
                     help="Number of dataloader workers")
 
 sys_arg.add_argument("--f_gird", type=Path,
@@ -105,11 +105,11 @@ sys_arg.add_argument("--label_size", type=tuple,
                     help="Label image size")
 
 sys_arg.add_argument("--checkpoint_freq", type=int, 
-                    default=1, 
+                    default=10, 
                     help="Number of epochs between each checkpoint")
 
 sys_arg.add_argument("--report_freq", type=int, 
-                    default=1, 
+                    default=20, 
                     help="Number of epochs between each summary write")
 
 sys_arg.add_argument("--cuda", type=bool, 
