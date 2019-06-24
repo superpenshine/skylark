@@ -51,8 +51,8 @@ class network(object):
         self.label_size = config.label_size
         self.nvar = config.nvar
         self.num_workers = config.num_workers
-        self.valid_required = True
-        self.pin_memory = True
+        self.valid_required = False
+        self.pin_memory = False
         self.non_blocking = False 
         # For debug on Windows
         if os.name == 'nt':
@@ -452,27 +452,49 @@ class network(object):
         '''
         print("\ntrain:")
         self.model.train()
-        start = time.time()
         train_loss = 0
+        torch.cuda.synchronize()
+        start0 = time.time()
+        start = time.time()
         for b_id, (i0, i1, label) in enumerate(self.train_loader):
-            # # Concatenate two imgs
-            # label, _i0, _i1 = label.to(self.device, non_blocking = self.non_blocking), i0.to(self.device, non_blocking = self.non_blocking), i1.to(self.device, non_blocking = self.non_blocking)
-            # # Only cut i1 for err calc
-            # i1_crop = _i1[:,:,self.ltl[0]:self.lbr[0],self.ltl[1]:self.lbr[1]]
-            # duo = torch.cat([_i0, _i1], dim=1)
-            # self.optimizer.zero_grad()
-            # output = self.model(duo)
+            # Concatenate two imgs
+            time0 = time.time()
+            print("epoch loaded time: ", time0 - start)
+            label, _i0, _i1 = label.to(self.device, non_blocking = self.non_blocking), i0.to(self.device, non_blocking = self.non_blocking), i1.to(self.device, non_blocking = self.non_blocking)
+            time1 = time.time()
+            print("transfer to GPU time: ",time1 - time0)
+            # Only cut i1 for err calc
+            i1_crop = _i1[:,:,self.ltl[0]:self.lbr[0],self.ltl[1]:self.lbr[1]]
+            time2 = time.time()
+            print("crop time: ", time2 - time1)
+            duo = torch.cat([_i0, _i1], dim=1)
+            time3 = time.time()
+            print("cat time: ", time3-time2)
+            self.optimizer.zero_grad()
+            time4=time.time()
+            print("zero_grad time: ", time4-time3)
+            output = self.model(duo)
+            time5=time.time()
+            print("fwd pass: ", time5 - time4)
             # print(self.model.state_dict().keys())
-            # loss = self.criterion(output + i1_crop, label)
-            # loss.backward()
-            # self.optimizer.step()
-            # train_loss += loss.item()
-            # self.step += 1
+            loss = self.criterion(output + i1_crop, label)
+            time6 = time.time()
+            print("loss calc: ", time6-time5)
+            loss.backward()
+            time7 = time.time()
+            print("back prop: ", time7-time6)
+            self.optimizer.step()
+            time8=time.time()
+            print("optimizer step: ", time8-time7)
+            train_loss += loss.item()
+            self.step += 1
             # print("step{}, loss: {:.4f}".format(self.step, loss.item()))
-            pass
+            time9=time.time()
+            print("last step: {}\n".format(time9-time8))
+            start = time.time()
         # for i in range(len(self.data_tr)):
         #     inputs = self.data_tr[i]
-        print(time.time() - start)
+        print(time.time() - start0)
 
         return train_loss
 
