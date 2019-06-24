@@ -26,23 +26,21 @@ class Astrodata(Dataset):
             self.d_names = list(data.keys())
             # Minus 1 to get rid of "log_grid" in each disk
             self.d_steps = [len(data[d_name].keys()) - 1 for d_name in self.d_names]
-            self.img = np.array(data['sigma_data']['0'])
-        self.crop_size = [48, 48]
-        self.label_size = [32, 32]
-        mean, std = 1, 1
-        pad1 = CustomPad((math.ceil((self.crop_size[1] - self.label_size[1])/2), 0, math.ceil((self.crop_size[1] - self.label_size[1])/2), 0), 'circular')
-        pad2 = CustomPad((0, math.ceil((self.crop_size[0] - self.label_size[0])/2), 0, math.ceil((self.crop_size[0] - self.label_size[0])/2)), 'zero', constant_values=0)
-        grc = GroupRandomCrop(self.crop_size, label_size=self.label_size)
-        norm = Normalize(mean, std),
-        totensor = ToTensor()
-        # import pdb
-        # pdb.set_trace()
-        self.img = pad1(self.img)
-        self.img = pad2(self.img)
-        self.l, self.h, self.m = grc(self.img, self.img, self.img)
-        self.l = totensor(self.l)
-        self.h = totensor(self.h)
-        self.m = totensor(self.m)
+        #     self.img = np.array(data['sigma_data']['0'])
+        # self.crop_size = [48, 48]
+        # self.label_size = [32, 32]
+        # mean, std = 1, 1
+        # pad1 = CustomPad((math.ceil((self.crop_size[1] - self.label_size[1])/2), 0, math.ceil((self.crop_size[1] - self.label_size[1])/2), 0), 'circular')
+        # pad2 = CustomPad((0, math.ceil((self.crop_size[0] - self.label_size[0])/2), 0, math.ceil((self.crop_size[0] - self.label_size[0])/2)), 'zero', constant_values=0)
+        # grc = GroupRandomCrop(self.crop_size, label_size=self.label_size)
+        # norm = Normalize(mean, std),
+        # totensor = ToTensor()
+        # self.img = pad1(self.img)
+        # self.img = pad2(self.img)
+        # self.l, self.h, self.m = grc(self.img, self.img, self.img)
+        # self.l = totensor(self.l)
+        # self.h = totensor(self.h)
+        # self.m = totensor(self.m)
 
         self.min_step_diff = min_step_diff
         self.max_step_diff = max_step_diff
@@ -65,44 +63,44 @@ class Astrodata(Dataset):
         l, h: Two input imgs for training
         m: label img
         '''
-        # # d, l_id, h_id, m_id = self.mapping(idx)
-        # d, l_id, h_id, m_id = self.triplets[idx]
-        # # print(d, l, h, m)
-        # with h5py.File(self.data_dir, "r") as data:
-        #     data_d = data[d]
-        #     l = np.array(data_d[str(l_id)])
-        #     h = np.array(data_d[str(h_id)])
-        #     m = np.array(data_d[str(m_id)])
-        #     log_grid = np.asarray(data_d["log_grid"])
+        # d, l_id, h_id, m_id = self.mapping(idx)
+        d, l_id, h_id, m_id = self.triplets[idx]
+        # print(d, l, h, m)
+        with h5py.File(self.data_dir, "r") as data:
+            data_d = data[d]
+            l = np.array(data_d[str(l_id)])
+            h = np.array(data_d[str(h_id)])
+            m = np.array(data_d[str(m_id)])
+            log_grid = np.asarray(data_d["log_grid"])
 
-        # # Apply transforms
-        # if self.transforms:
-        #     for t_i, transform in enumerate(self.transforms):
-        #         # second transform is a group opration
-        #         # if t_i in self.group_trans_id:
-        #         if hasattr(transform, 'group_tran'):
-        #             l, h, m = transform(l, h, m)
-        #             continue
-        #         # Check if func arguments requires of log_grid
-        #         # if 'log_grid' in transform.__call__.__code__.co_varnames:
-        #         if hasattr(transform, 'require_grid'):
-        #             l = transform(log_grid, l)
-        #             h = transform(log_grid, h)
-        #             m = transform(log_grid, m)
-        #             continue
-        #         l = transform(l)
-        #         h = transform(h)
-        #         m = transform(m)
+        # Apply transforms
+        if self.transforms:
+            for t_i, transform in enumerate(self.transforms):
+                # second transform is a group opration
+                # if t_i in self.group_trans_id:
+                if hasattr(transform, 'group_tran'):
+                    l, h, m = transform(l, h, m)
+                    continue
+                # Check if func arguments requires of log_grid
+                # if 'log_grid' in transform.__call__.__code__.co_varnames:
+                if hasattr(transform, 'require_grid'):
+                    l = transform(log_grid, l)
+                    h = transform(log_grid, h)
+                    m = transform(log_grid, m)
+                    continue
+                l = transform(l)
+                h = transform(h)
+                m = transform(m)
 
-        # ret = [l, h, m]
-        # # Verbose mode, return disk name, img indexes
-        # if self.verbose:
-        #     ret.append({"disk_name": d, 
-        #                 "img1_idx": l_id, 
-        #                 "img2_idx": h_id, 
-        #                 "label_idx": m_id})
-        # return ret
-        return [self.l, self.h, self.m]
+        ret = [l, h, m]
+        # Verbose mode, return disk name, img indexes
+        if self.verbose:
+            ret.append({"disk_name": d, 
+                        "img1_idx": l_id, 
+                        "img2_idx": h_id, 
+                        "label_idx": m_id})
+        return ret
+        # return [self.l, self.h, self.m]
 
 
     def __len__(self):

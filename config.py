@@ -64,7 +64,7 @@ sys_arg.add_argument("--epochs", type=int,
                     help="Number of epochs")
 
 sys_arg.add_argument("--num_workers", type=int,
-                    default=1,
+                    default=0,
                     help="Number of dataloader workers")
 
 sys_arg.add_argument("--f_gird", type=Path,
@@ -113,8 +113,9 @@ sys_arg.add_argument("--report_freq", type=int,
                     help="Number of epochs between each summary write")
 
 sys_arg.add_argument("--cuda", type=bool, 
-                    default=is_available(), 
+                    default=False, 
                     help="Cuda enabled or use cpu")
+
 
 def get_config():
     config, unparsed = parser.parse_known_args()

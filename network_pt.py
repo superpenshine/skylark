@@ -61,9 +61,9 @@ class network(object):
             self.data_dir = str(config.h5_dir_win)
             self.batch_size = 20
             self.valid_required = False
-            self.epochs = 10
+            self.epochs = 5
             self.min_step_diff = None
-            self.num_workers = 1
+            self.num_workers = 2
 
         # Inferenced parameter
         self.tr_data_dir = Path(self.data_dir + "_tr.h5")
@@ -460,7 +460,7 @@ class network(object):
             # Concatenate two imgs
             torch.cuda.synchronize()
             time0 = time.time()
-            print("epoch loaded time: ", time0 - start)
+            print("batch loaded time: ", time0 - start)
             label, _i0, _i1 = label.to(self.device, non_blocking = self.non_blocking), i0.to(self.device, non_blocking = self.non_blocking), i1.to(self.device, non_blocking = self.non_blocking)
             torch.cuda.synchronize()
             time1 = time.time()
@@ -473,11 +473,12 @@ class network(object):
             duo = torch.cat([_i0, _i1], dim=1)
             torch.cuda.synchronize()
             time3 = time.time()
-            print("cat: ", time3-time2)
+            print("cat: ", time3 - time2)
+            pdb.set_trace()
             self.optimizer.zero_grad()
             torch.cuda.synchronize()
             time4=time.time()
-            print("zero_grad: ", time4-time3)
+            print("zero_grad: ", time4 - time3)
             output = self.model(duo)
             torch.cuda.synchronize()
             time5=time.time()
@@ -587,6 +588,13 @@ class network(object):
         self.load_writer()
         self.load_data()
         self.load_model()
+
+        model_parameters = filter(lambda p: p.requires_grad, self.model.parameters())
+        params = sum([np.prod(p.size()) for p in model_parameters])
+        print("Number of network parameters: ", params)
+        tensor_list = list(self.model.state_dict().items())
+        for layer_tensor_name, tensor in tensor_list:
+            print('Layer {}: {} elements'.format(layer_tensor_name, torch.numel(tensor)))
 
         # Construct network grgh
         sample_input=(torch.rand(1, 8, self.crop_size[0], self.crop_size[1]))

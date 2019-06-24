@@ -2,18 +2,6 @@
 import torch.nn as nn
 from util.padding import CircularPad2d
 
-# def Padding(l, r, u, d):
-#     '''
-#     Custom padding, circular padding up/down, 
-#     replication padding left/right
-#     '''
-#     self.ud_pad = CircularPad2d((0, 0, u, d))
-#     self.lr_pad = nn.ReplicationPad2d((l, r, 0, 0))
-
-#     def forward(self, x):
-#         x = self.ud_pad(x)
-#         x = self.lf_pad(x)
-
 
 def ConvBlock(fan_in, fan_out, stride=1, bias=False):
     # 3x3 convolution with padding
