@@ -159,6 +159,8 @@ class network(object):
             print("Using CPU")
             self.device = torch.device('cpu')
 
+        # import IPython
+        # IPython.embed()
         self.model = ResNet().to(self.device)
         self.optimizer = optim.Adam(self.model.parameters(), lr=self.lr)
         # self.scheduler = optim.lr_scheduler.MultiStepLR(self.optimizer, milestones=[1, 10], gamma=0.5)

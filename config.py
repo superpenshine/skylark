@@ -113,9 +113,8 @@ sys_arg.add_argument("--report_freq", type=int,
                     help="Number of epochs between each summary write")
 
 sys_arg.add_argument("--cuda", type=bool, 
-                    default=False, 
+                    default=is_available(), 
                     help="Cuda enabled or use cpu")
-
 
 def get_config():
     config, unparsed = parser.parse_known_args()
