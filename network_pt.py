@@ -79,7 +79,7 @@ class network(object):
         '''
         Load the tensorboard writter
         '''
-        self.writer = SummaryWriter(str(self.log_dir))
+        self.writer = SummaryWriter(log_dir=str(self.log_dir), flush_secs=120)
 
 
     def load_data(self):
@@ -599,7 +599,7 @@ class network(object):
 
         # Construct network grgh
         sample_input=(torch.rand(1, 8, self.crop_size[0], self.crop_size[1]))
-        self.writer.add_graph(ResNet(), input_to_model=sample_input)
+        self.writer.add_graph(model = ResNet(), input_to_model=sample_input)
 
         accuracy = 0
         start_epoch = 1
@@ -622,7 +622,7 @@ class network(object):
                 self.model.train()
                 self.writer.add_scalar('Train/Loss', train_result, self.step)
                 self.writer.add_scalar('Valid/Loss', valid_result, self.step)
-
+            self.writer.flush()
             # Save checkpoint periodically
             if epoch % self.checkpoint_freq == 0:
                 self.save_checkpoint(accuracy, epoch)
