@@ -63,7 +63,7 @@ class network(object):
             self.valid_required = False
             self.epochs = 5
             self.min_step_diff = None
-            self.num_workers = 2
+            self.num_workers = 0
 
         # Inferenced parameter
         self.tr_data_dir = Path(self.data_dir + "_tr.h5")
