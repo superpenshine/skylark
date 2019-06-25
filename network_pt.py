@@ -599,7 +599,7 @@ class network(object):
 
         # Construct network grgh
         sample_input=(torch.rand(1, 8, self.crop_size[0], self.crop_size[1]))
-        self.writer.add_graph(model = ResNet(), input_to_model=sample_input)
+        self.writer.add_graph(ResNet(), input_to_model=sample_input)
 
         accuracy = 0
         start_epoch = 1
