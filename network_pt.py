@@ -79,7 +79,7 @@ class network(object):
         '''
         Load the tensorboard writter
         '''
-        self.writer = SummaryWriter(str(self.log_dir), flush_secs=120)
+        self.writer = SummaryWriter(str(self.log_dir))
 
 
     def load_data(self):
