@@ -10,7 +10,6 @@ from dataset.Astrodata import Astrodata
 from torchvision import transforms
 from torch.utils.data import DataLoader, Dataset
 from torch.utils.data.sampler import SubsetRandomSampler
-from torch.utils.tensorboard import SummaryWriter
 
 
 config, unparsed = get_config()
