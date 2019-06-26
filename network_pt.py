@@ -51,7 +51,7 @@ class network(object):
         self.label_size = config.label_size
         self.nvar = config.nvar
         self.num_workers = config.num_workers
-        self.valid_required = False
+        self.valid_required = True
         self.pin_memory = False
         self.non_blocking = False 
         # For debug on Windows
@@ -517,7 +517,6 @@ class network(object):
         Test the accuracy of the current model parameters
         '''
         print("\nvalid:")
-        self.model.eval()
         valid_loss = 0
         n_batch = 0
 
@@ -618,11 +617,13 @@ class network(object):
             train_result = self.train()
             print("Epoch {} loss: {}".format(epoch, train_result))
             # test_result = self.test()
-            if epoch % self.report_freq == 0 and self.valid_required:
-                valid_result = self.valid()
+            if epoch % self.report_freq == 0:
+                if self.valid_required:
+                    self.model.eval()
+                    valid_result = self.valid()
+                    self.writer.add_scalar('Valid/Loss', valid_result, self.step)
                 self.model.train()
                 self.writer.add_scalar('Train/Loss', train_result, self.step)
-                self.writer.add_scalar('Valid/Loss', valid_result, self.step)
             self.writer._get_file_writer().flush()
             if epoch % self.checkpoint_freq == 0:
                 self.save_checkpoint(accuracy, epoch)
