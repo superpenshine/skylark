@@ -61,8 +61,8 @@ class network(object):
             self.data_dir = str(config.h5_dir_win)
             self.batch_size = 20
             self.valid_required = False
-            self.epochs = 5
-            self.min_step_diff = None
+            self.epochs = 1
+            self.min_step_diff = 60
             self.num_workers = 0
 
         # Inferenced parameter
@@ -457,8 +457,8 @@ class network(object):
         train_loss = 0
         n_batch = 0
         # torch.cuda.synchronize()
-        # start = time.time()
-        start0 = time.time()
+        start = time.time()
+        # start0 = time.time()
         for b_id, (i0, i1, label) in enumerate(self.train_loader):
             # Concatenate two imgs
             # torch.cuda.synchronize()
@@ -519,6 +519,7 @@ class network(object):
         print("\nvalid:")
         self.model.eval()
         valid_loss = 0
+        n_batch = 0
 
         with torch.no_grad():
             for b_id, (i0, i1, label) in enumerate(self.valid_loader):
@@ -532,10 +533,11 @@ class network(object):
                 loss = self.criterion(output + i1_crop, label)
                 valid_loss += loss.item()
                 print("batch{}, loss: {}".format(b_id, loss.item()))
+                n_batch += 1 
                 if b_id == 20:
                     break
 
-        return valid_loss
+        return valid_loss / n_batch
 
 
     def load_checkpoint(self):
@@ -811,7 +813,8 @@ class network(object):
         self.writer.add_image('resized_i0', i0, dataformats='HW')
         self.writer.add_image('resized_i1', i1, dataformats='HW')
         self.writer.add_image('resized_label', label, dataformats='HW')
-
+        self.writer._get_file_writer().flush()
+        
         # plt.savefig("a.png")
         print("triplet id: ", triplet_id)
         print("disk name: ", info_dict["disk_name"])
