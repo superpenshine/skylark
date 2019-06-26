@@ -532,10 +532,8 @@ class network(object):
                 # L1 Loss
                 loss = self.criterion(output + i1_crop, label)
                 valid_loss += loss.item()
+                n_batch += 1
                 print("batch{}, loss: {}".format(b_id, loss.item()))
-                n_batch += 1 
-                if b_id == 20:
-                    break
 
         return valid_loss / n_batch
 
