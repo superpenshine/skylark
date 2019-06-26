@@ -455,58 +455,61 @@ class network(object):
         print("\ntrain:")
         self.model.train()
         train_loss = 0
-        torch.cuda.synchronize()
+        n_batch = 0
+        # torch.cuda.synchronize()
+        # start = time.time()
         start0 = time.time()
-        start = time.time()
         for b_id, (i0, i1, label) in enumerate(self.train_loader):
             # Concatenate two imgs
-            torch.cuda.synchronize()
-            time0 = time.time()
-            print("batch loaded time: ", time0 - start)
+            # torch.cuda.synchronize()
+            # time0 = time.time()
+            # print("batch load: ", time0 - start0)
             label, _i0, _i1 = label.to(self.device, non_blocking = self.non_blocking), i0.to(self.device, non_blocking = self.non_blocking), i1.to(self.device, non_blocking = self.non_blocking)
-            torch.cuda.synchronize()
-            time1 = time.time()
-            print("transfer to GPU time: ",time1 - time0)
+            # torch.cuda.synchronize()
+            # time1 = time.time()
+            # print("transfer: ",time1 - time0)
             # Only cut i1 for err calc
             i1_crop = _i1[:,:,self.ltl[0]:self.lbr[0],self.ltl[1]:self.lbr[1]]
-            torch.cuda.synchronize()
-            time2 = time.time()
-            print("crop: ", time2 - time1)
+            # torch.cuda.synchronize()
+            # time2 = time.time()
+            # print("crop: ", time2 - time1)
             duo = torch.cat([_i0, _i1], dim=1)
-            torch.cuda.synchronize()
-            time3 = time.time()
-            print("cat: ", time3 - time2)
+            # torch.cuda.synchronize()
+            # time3 = time.time()
+            # print("cat: ", time3 - time2)
             self.optimizer.zero_grad()
-            torch.cuda.synchronize()
-            time4=time.time()
-            print("zero_grad: ", time4 - time3)
+            # torch.cuda.synchronize()
+            # time4=time.time()
+            # print("zero_grad: ", time4 - time3)
             output = self.model(duo)
-            torch.cuda.synchronize()
-            time5=time.time()
-            print("fwd pass: ", time5 - time4)
+            # torch.cuda.synchronize()
+            # time5=time.time()
+            # print("fwd pass: ", time5 - time4)
             # print(self.model.state_dict().keys())
             loss = self.criterion(output + i1_crop, label)
-            torch.cuda.synchronize()
-            time6 = time.time()
-            print("loss calc: ", time6 - time5)
+            # torch.cuda.synchronize()
+            # time6 = time.time()
+            # print("loss calc: ", time6 - time5)
             loss.backward()
-            torch.cuda.synchronize()
-            time7 = time.time()
-            print("back prop: ", time7 - time6)
+            # torch.cuda.synchronize()
+            # time7 = time.time()
+            # print("back prop: ", time7 - time6)
             self.optimizer.step()
-            torch.cuda.synchronize()
-            time8 = time.time()
-            print("optimizer step: ", time8 - time7)
+            # torch.cuda.synchronize()
+            # time8 = time.time()
+            # print("optimizer step: ", time8 - time7)
             train_loss += loss.item()
             self.step += 1
+            n_batch += 1 
             print("step{}, loss: {:.4f}".format(self.step, loss.item()))
-            torch.cuda.synchronize()
-            time9 = time.time()
-            print("last step: {}\n".format(time9 - time8))
-            start = time.time()
-        print(time.time() - start0)
+            # torch.cuda.synchronize()
+            # time9 = time.time()
+            # print("last step: {}\n".format(time9 - time8))
+            # start0 = time.time()
 
-        return train_loss
+        print(time.time() - start)
+
+        return train_loss / n_batch
 
 
     def valid(self):
@@ -621,7 +624,6 @@ class network(object):
                 self.writer.add_scalar('Train/Loss', train_result, self.step)
                 self.writer.add_scalar('Valid/Loss', valid_result, self.step)
             self.writer._get_file_writer().flush()
-            # Save checkpoint periodically
             if epoch % self.checkpoint_freq == 0:
                 self.save_checkpoint(accuracy, epoch)
 
@@ -629,6 +631,7 @@ class network(object):
         self.writer._get_file_writer().flush()
         self.save()
         print("Saved to {}".format(self.model_dir))
+
         # # Remove the checkpoint when complete and the model is saved
         # if os.path.exists(self.checkpoint):
         #     os.remove(self.checkpoint)

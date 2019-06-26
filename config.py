@@ -64,7 +64,7 @@ sys_arg.add_argument("--epochs", type=int,
                     help="Number of epochs")
 
 sys_arg.add_argument("--num_workers", type=int,
-                    default=0,
+                    default=8,
                     help="Number of dataloader workers")
 
 sys_arg.add_argument("--f_gird", type=Path,
