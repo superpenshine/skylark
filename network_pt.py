@@ -54,6 +54,7 @@ class network(object):
         self.valid_required = True
         self.pin_memory = False
         self.non_blocking = False 
+        
         # For debug on Windows
         if os.name == 'nt':
             self.non_blocking = False
@@ -855,4 +856,5 @@ class network(object):
             shutil.rmtree("output")
         if Path('tmp').exists():
             shutil.rmtree("tmp") 
+        os.mkdir(self.log_dir)
         print("Clean up finished")
