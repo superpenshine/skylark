@@ -59,11 +59,13 @@ class network(object):
             self.non_blocking = False
             self.pin_memory = False
             self.data_dir = str(config.h5_dir_win)
-            self.batch_size = 20
-            self.valid_required = False
-            self.epochs = 1
-            self.min_step_diff = 60
+            self.batch_size = 30
+            self.valid_required = True
+            self.epochs = 5
+            self.min_step_diff = None
             self.num_workers = 0
+            self.report_freq = 1
+            self.lr = 0.0005
 
         # Inferenced parameter
         self.tr_data_dir = Path(self.data_dir + "_tr.h5")
@@ -507,7 +509,7 @@ class network(object):
             # print("last step: {}\n".format(time9 - time8))
             # start0 = time.time()
 
-        print(time.time() - start)
+        print("Time {} sec".format(time.time() - start))
 
         return train_loss / n_batch
 
@@ -622,6 +624,7 @@ class network(object):
                     self.model.eval()
                     valid_result = self.valid()
                     self.writer.add_scalar('Valid/Loss', valid_result, self.step)
+                    print("Validation loss: {}".format(valid_result))
                 self.model.train()
                 self.writer.add_scalar('Train/Loss', train_result, self.step)
             self.writer._get_file_writer().flush()

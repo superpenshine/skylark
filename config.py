@@ -60,7 +60,7 @@ sys_arg.add_argument("--lr", type=float,
                     help="Learning rate")
 
 sys_arg.add_argument("--epochs", type=int,
-                    default=10000,
+                    default=20000,
                     help="Number of epochs")
 
 sys_arg.add_argument("--num_workers", type=int,
