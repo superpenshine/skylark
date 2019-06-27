@@ -62,11 +62,12 @@ class network(object):
             self.data_dir = str(config.h5_dir_win)
             self.batch_size = 30
             self.valid_required = True
-            self.epochs = 5
+            self.epochs = 50
             self.min_step_diff = None
-            self.num_workers = 0
+            self.num_workers = 4
             self.report_freq = 1
-            self.lr = 0.0005
+            self.checkpoint_freq = 1
+            self.lr = 0.0001
 
         # Inferenced parameter
         self.tr_data_dir = Path(self.data_dir + "_tr.h5")
@@ -525,11 +526,11 @@ class network(object):
 
         with torch.no_grad():
             for b_id, (i0, i1, label) in enumerate(self.valid_loader):
+                label, _i0, _i1 = label.to(self.device, non_blocking = self.non_blocking), i0.to(self.device, non_blocking = self.non_blocking), i1.to(self.device, non_blocking = self.non_blocking)
                 # Only cut i1 for err calc
-                i1_crop = i1[:,:,self.ltl[0]:self.lbr[0],self.ltl[1]:self.lbr[1]]
+                i1_crop = _i1[:,:,self.ltl[0]:self.lbr[0],self.ltl[1]:self.lbr[1]]
                 # Concatenate two input imgs in NCHW format
-                duo = torch.cat([i0, i1], dim=1)
-                duo, label, i1_crop = duo.to(self.device), label.to(self.device), i1_crop.to(self.device)
+                duo = torch.cat([_i0, _i1], dim=1)
                 output = self.model(duo)
                 # L1 Loss
                 loss = self.criterion(output + i1_crop, label)
@@ -635,7 +636,6 @@ class network(object):
         print("Training finished")
         self.writer._get_file_writer().flush()
         self.save()
-        print("Saved to {}".format(self.model_dir))
 
         # # Remove the checkpoint when complete and the model is saved
         # if os.path.exists(self.checkpoint):
@@ -714,11 +714,14 @@ class network(object):
         device = torch.device('cpu')
         if Path(self.model_dir).exists():
             self.load(map_location=device)
-        else:
+        elif Path(self.checkpoint).exists():
             print("Model file does not exists, trying checkpoint")
             self.model = ResNet().to(device)
             self.optimizer = optim.Adam(self.model.parameters(), lr=self.lr)
             self.load_checkpoint()
+        else:
+            print("No model.pth or checkpoint.tar found, exiting.")
+            exit(1)
 
         # Run the network with input
         self.model.eval()
