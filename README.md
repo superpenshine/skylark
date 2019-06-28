@@ -10,15 +10,16 @@ cudnn7.1/7.5
 
 Python requirements:
 
+* pytorch
 * numpy
 * matplotlib
 * h5py
-* tensorflow-gpu==1.12.0 (Ignore this)
-* tb-nightly
+* tensorboardX
 * Future
 * Pillow
 * opencv-python
 * scipy
+
 
 ## Usage
 - Save raw data to h5py files

@@ -33,7 +33,7 @@ def main():
 
     solver = network(config)
     if config.m == 'v':
-        solver.test_single(triplet_id=40, step_diff=(40, None), dataset='tr')
+        solver.test_single(triplet_id=40, step_diff=(40, None), dataset='va')
     elif config.m == 'save':
         save_to_h5(config, trva=True, polar=False, size=3)
     elif config.m == 'stats':
