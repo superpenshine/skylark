@@ -9,7 +9,7 @@ import time
 import numpy as np
 import matplotlib.pyplot as plt
 
-from model import ResNet
+from model import ResNet, UNet
 from pathlib import Path
 from util.data_util import get_stats
 from util.transform import *
@@ -601,8 +601,8 @@ class network(object):
             print('Layer {}: {} elements'.format(layer_tensor_name, torch.numel(tensor)))
 
         # Construct network grgh
-        sample_input=(torch.rand(1, 8, self.crop_size[0], self.crop_size[1]))
-        self.writer.add_graph(model = ResNet(), input_to_model=sample_input)
+        # sample_input=(torch.rand(1, 8, self.crop_size[0], self.crop_size[1]))
+        # self.writer.add_graph(model = ResNet(), input_to_model=sample_input)
 
         accuracy = 0
         start_epoch = 1
