@@ -265,7 +265,7 @@ class GroupRandomCrop(object):
                    mid.crop((j+self.inner_pad_size[1], i+self.inner_pad_size[0], j+self.label_size[1], i+self.label_size[0]))
 
         return low[i:br[0], j:br[1]], \
-               high[i:br[0], j:j+br[1]], \
+               high[i:br[0], j:br[1]], \
                mid[i+self.inner_pad_size[0]:i+self.inner_pad_size[0]+self.label_size[0], j+self.inner_pad_size[1]:j+self.inner_pad_size[1]+self.label_size[1]]
 
     def __repr__(self):

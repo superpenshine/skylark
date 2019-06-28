@@ -93,16 +93,16 @@ sys_arg.add_argument("--input_size", type=tuple,
                     help="Input image size")
 
 sys_arg.add_argument("--crop_size", type=tuple,
-                    default=(48, 48),  
+                    # default=(48, 48),  
                     # default=(32, 32), 
-                    # default=(24, 24),
-                    help="Ramdom crop image size")
+                    default=(24, 24),
+                    help="Ramdom crop image size, tiling size")
 
 sys_arg.add_argument("--label_size", type=tuple,
-                    default=(32, 32),  
+                    # default=(32, 32),  
                     # default=(16, 16),
-                    # default=(8, 8), 
-                    help="Label image size")
+                    default=(8, 8), 
+                    help="Label image size, this is related to network model")
 
 sys_arg.add_argument("--checkpoint_freq", type=int, 
                     default=20, 

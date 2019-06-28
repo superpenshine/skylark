@@ -127,7 +127,6 @@ class network(object):
                             min_step_diff = self.min_step_diff, 
                             max_step_diff = self.max_step_diff, 
                             transforms = trans) # RandomCrop is group op
-
         # Randomly shuffle and split data to train/valid
         # np.random.seed(1234)
         # indices = list(range(len(data)))
