@@ -152,6 +152,7 @@ class ResNet(nn.Module):
 
         return x
 
+
 class DownBlock(nn.Module):
     '''
     Construct 2 conv blocks and 1 downsample
@@ -160,7 +161,7 @@ class DownBlock(nn.Module):
         super(ResUnit, self).__init__()
         self.conv1 = ConvBlock(fan_in, fan_out)
         self.conv2 = ConvBlock(fan_out, fan_out)
-        self.maxpool = nn.MaxPool2d(2)
+        self.maxpool = nn.MaxPool2d(2, stride=2)
 
     def forward(self, x):
         x = self.conv1(x)
