@@ -35,8 +35,12 @@ class ResUnit(nn.Module):
 
         if self.downsample is not None:
             residual = self.downsample(x)
-
-        residual = residual[:,:,1:1+out.size()[2],1:1+out.size()[3]]
+        tl = (int(0.5 * (residual.size()[2] - out.size()[2])), int(0.5 * (residual.size()[3] - out.size()[3])))
+        br = (tl[0] + out.size()[2], tl[1] + out.size()[3])
+        # import pdb
+        # pdb.set_trace()
+        residual = residual[:,:,tl[0]:br[0],tl[1]:br[1]]
+        # residual = residual[:,:,2:3+out.size()[2],2:2+out.size()[3]]
         out = out + residual
         out = self.relu(out)
 
