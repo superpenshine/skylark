@@ -64,7 +64,10 @@ class Astrodata(Dataset):
         m: label img
         '''
         # d, l_id, h_id, m_id = self.mapping(idx)
-        d, l_id, h_id, m_id = self.triplets[idx]
+        try:
+            d, l_id, h_id, m_id = self.triplets[idx]
+        except IndexError:
+            raise IndexError("Maximum index supported is {}".format(self.__len__()))
         # print(d, l, h, m)
         with h5py.File(self.data_dir, "r") as data:
             data_d = data[d]
