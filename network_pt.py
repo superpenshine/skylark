@@ -858,5 +858,5 @@ class network(object):
             shutil.rmtree("output")
         if Path('tmp').exists():
             shutil.rmtree("tmp") 
-        os.mkdir(self.log_dir)
+        os.mkdir(str(self.log_dir))
         print("Clean up finished")
