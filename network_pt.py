@@ -60,11 +60,11 @@ class network(object):
             self.non_blocking = False
             self.pin_memory = False
             self.data_dir = str(config.h5_dir_win)
-            self.batch_size = 30
+            self.batch_size = 5
             self.valid_required = True
             self.epochs = 50
             self.min_step_diff = None
-            self.num_workers = 4
+            self.num_workers = 0
             self.report_freq = 1
             self.checkpoint_freq = 1
             self.lr = 0.0001
@@ -164,8 +164,8 @@ class network(object):
 
         # import IPython
         # IPython.embed()
-        self.model = ResNet().to(self.device)
-        # self.model = UNet.to(self.device)
+        # self.model = ResNet().to(self.device)
+        self.model = UNet().to(self.device)
         self.optimizer = optim.Adam(self.model.parameters(), lr=self.lr)
         # self.scheduler = optim.lr_scheduler.MultiStepLR(self.optimizer, milestones=[1, 10], gamma=0.5)
         self.criterion = MSELoss().to(self.device) # set reduction=sum, or too smal to see

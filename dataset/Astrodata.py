@@ -91,6 +91,7 @@ class Astrodata(Dataset):
                     h = transform(log_grid, h)
                     m = transform(log_grid, m)
                     continue
+                
                 l = transform(l)
                 h = transform(h)
                 m = transform(m)

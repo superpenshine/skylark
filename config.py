@@ -27,20 +27,21 @@ sys_arg.add_argument("-m", type=str,
                     p: for preview''')
 
 sys_arg.add_argument("--data_dir", type=Path,
-                    # default='D:/sigma_data',
-                    default='/home/sht/data/sigma_data',
+                    default='D:/sigma_data',
+                    # default='/home/sht/data/sigma_data',
                     help="Directory to data folder")
 
 sys_arg.add_argument("--h5_dir_win", type=Path,
                     # default='D:/sigma_data/data_polar',
                     # default='D:/sigma_data/data_logpolar',
-                    default='C:/sigma_data/data_logpolar_resized',
+                    # default='D:/sigma_data/data_logpolar_resized32',
+                    default='D:/sigma_data/data_logpolar_resized188',
                     help="Win data file without the .h5 suffix")
 
 sys_arg.add_argument("--h5_dir_linux", type=Path,
                     # default='/home/sht/data/sigma_data/data_polar', 
                     # default='/home/sht/data/sigma_data/data_logpolar', 
-                    default='/home/sht/data/sigma_data/data_logpolar_resized', 
+                    default='/home/sht/data/sigma_data/data_logpolar_resized188', 
                     help="Linux data file without the .h5 suffix")
 
 sys_arg.add_argument("--min_step_diff", type=int,
@@ -88,18 +89,20 @@ sys_arg.add_argument("--valid_size", type=float,
                     help="Validation sample percentage (<=1.0)")
 
 sys_arg.add_argument("--input_size", type=tuple, 
-                    # default=(64, 64), 
-                    default=(32, 32), 
+                    default=(196, 196), # UNet
+                    # default=(32, 32), 
                     help="Input image size")
 
 sys_arg.add_argument("--crop_size", type=tuple,
-                    default=(48, 48),  
+                    default=(380, 380), # label_size + 184
+                    # default=(48, 48),  
                     # default=(32, 32), 
                     # default=(24, 24),
-                    help="Ramdom crop image size, tiling size")
+                    help='''Ramdom crop image size, tiling size.''')
 
 sys_arg.add_argument("--label_size", type=tuple,
-                    default=(32, 32),  
+                    default=(196, 196), # UNet, must > 184, or wrong padding
+                    # default=(32, 32),  
                     # default=(16, 16),
                     # default=(8, 8), 
                     help="Label image size, this is related to network model")

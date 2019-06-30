@@ -257,7 +257,7 @@ class GroupRandomCrop(object):
                 "Crop output size {}x{} must be <= {}x{}, or pad more first".format(self.size[0], self.size[1], h, w))
 
         i, j = self.get_params(h, w)
-        br = (i+self.size[0], j+self.size[1])
+        br = (i + self.size[0], j + self.size[1])
 
         if not self.numpy_mode:
             return low.crop((j, i, br[1], br[0])), \

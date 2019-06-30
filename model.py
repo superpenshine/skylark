@@ -89,40 +89,52 @@ class ResNet(nn.Module):
         return x
 
 
-class DownBlock(nn.Module):
+class DoubleConv(nn.Module):
     '''
     Construct 2 conv blocks and 1 downsample
     '''
     def __init__(self, fan_in, fan_out):
-        super(ResUnit, self).__init__()
-        self.conv1 = ConvBlock(fan_in, fan_in)
-        self.conv2 = ConvBlock(fan_in, fan_out)
-        self.maxpool = nn.MaxPool2d(2, stride=2)
-
-    def forward(self, x):
-        x = self.conv1(x)
-        x = self.conv2(x)
-        x = self.maxpool(x)
-
-        return x
-
-
-class UpBlock(nn.Module):
-    '''
-    Construct 2 conv blocks and 1 downsample
-    '''
-    def __init__(self, fan_in, fan_out):
-        super(ResUnit, self).__init__()
-        self.upconv = nn.ConvTranspose2d(fan_in, fan_in, 2, stride=2)
+        super(DoubleConv, self).__init__()
         self.conv1 = ConvBlock(fan_in, fan_out)
         self.conv2 = ConvBlock(fan_out, fan_out)
+        self.relu = nn.ReLU(inplace=True)
 
     def forward(self, x):
-        x = self.upconv(x)
         x = self.conv1(x)
+        x = self.relu(x)
         x = self.conv2(x)
+        x = self.relu(x)
 
         return x
+
+
+def UpConv(fan_in, fan_out, stride=2):
+    return nn.ConvTranspose2d(fan_in, fan_out, 2, stride=stride)
+
+
+def MaxPool(stride=2):
+    return nn.MaxPool2d(2, stride=stride)
+
+
+# class UpBlock(nn.Module):
+#     '''
+#     Construct 2 conv blocks and 1 downsample
+#     '''
+#     def __init__(self, fan_in, fan_out):
+#         super(UpBlock, self).__init__()
+#         self.upconv = nn.ConvTranspose2d(fan_in, fan_out, 2, stride=2)
+#         self.conv1 = ConvBlock(fan_in, fan_out)
+#         self.conv2 = ConvBlock(fan_out, fan_out)
+#         self.relu = nn.ReLU(inplace=True)
+
+#     def forward(self, x):
+#         x = self.upconv(x)
+#         x = self.conv1(x)
+#         x = self.relu(x)
+#         x = self.conv2(x)
+#         x = self.relu(x)
+
+#         return x
 
 
 class UNet(nn.Module):
@@ -131,66 +143,85 @@ class UNet(nn.Module):
     '''
     def __init__(self):
         super(UNet, self).__init__()
-        self.conv1 = ConvBlock(8, 64)
-        self.d_layer1 = _make_layers(DownBlock, 128)
-        self.d_layer2 = _make_layers(DownBlock, 256)
-        self.d_layer3 = _make_layers(DownBlock, 512)
-        self.d_layer4 = _make_layers(DownBlock, 1024)
-        self.bot1 = ConvBlock(1024, 1024)
-        self.bot2 = ConvBlock(1024, 1024)
-        self.u_layer1 = _make_layers(UpBlock, 512)
-        self.u_layer2 = _make_layers(UpBlock, 256)
-        self.u_layer3 = _make_layers(UpBlock, 128)
-        self.u_layer4 = _make_layers(UpBlock, 64)
-        self.out = ConvBlock(64, 4)
+        self.fan_in = 8
+        self.d_layer1 = self._make_layer(DoubleConv, 64)
+        self.d_layer2 = self._make_layer(DoubleConv, 128)
+        self.d_layer3 = self._make_layer(DoubleConv, 256)
+        self.d_layer4 = self._make_layer(DoubleConv, 512)
+        self.pool = MaxPool()
+
+        self.bot_layer = self._make_layer(DoubleConv, 1024)
+
+        self.upconv1 = self._make_layer(UpConv, 512)
+        self.u_layer1 = self._make_layer(DoubleConv, 512, cat=512)
+        self.upconv2 = self._make_layer(UpConv, 256)
+        self.u_layer2 = self._make_layer(DoubleConv, 256, cat=256)
+        self.upconv3 = self._make_layer(UpConv, 128)
+        self.u_layer3 = self._make_layer(DoubleConv, 128, cat=128)
+        self.upconv4 = self._make_layer(UpConv, 64)
+        self.u_layer4 = self._make_layer(DoubleConv, 64, cat=64)
+
+        self.out = nn.Conv2d(64, 4, kernel_size=1, stride=1, bias=True)
 
 
-    def _make_layers(self, block, fan_out):
+    def _make_layer(self, block, fan_out, cat=0):
         '''
         Construct layers
+        cat: Concatenate residual flow
         '''
-        layer = block(self.fan_in, fan_out, stride, downsample, **kwargs)
+        if cat != 0:
+            self.fan_in += cat
+        layer = block(self.fan_in, fan_out)
         self.fan_in = fan_out
 
         return layer
 
 
     def forward(self, x):
-        x_conv1 = self.conv1(x)
-        x_d1 = self.d_layer1(x_conv1)
-        x_d2 = self.d_layer2(x_d1)
-        x_d3 = self.d_layer3(x)
+        x = self.d_layer1(x)
+        residual1 = x
+
+        x = self.pool(x)
+        x = self.d_layer2(x) 
+        residual2 = x
+
+        x = self.pool(x)
+        x = self.d_layer3(x)
+        residual3 = x
+
+        x = self.pool(x)
         x = self.d_layer4(x)
-        residual1 = x_conv1
-        residual2 = x_d1
-        residual3 = x_d2
-        residual4 = x_d3
+        residual4 = x
 
-        x = self.bot1(x)
-        x = self.bot2(x)
+        x = self.pool(x)
 
+        x = self.bot_layer(x)
+
+        x = self.upconv1(x)
         tl, br = self.crop_position(residual4.size(), x.size())
         residual4 = residual4[:,:,tl[0]:br[0],tl[1]:br[1]]
         x = torch.cat((x, residual4[:,:,:x.size()[2],:x.size()[3]]), 1)
         x = self.u_layer1(x)
 
+        x = self.upconv2(x)
         tl, br = self.crop_position(residual3.size(), x.size())
         residual3 = residual3[:,:,tl[0]:br[0],tl[1]:br[1]]
         x = torch.cat((x, residual3[:,:,:x.size()[2],:x.size()[3]]), 1)
         x = self.u_layer2(x)
 
+        x = self.upconv3(x)
         tl, br = self.crop_position(residual2.size(), x.size())
         residual2 = residual2[:,:,tl[0]:br[0],tl[1]:br[1]]
         x = torch.cat((x, residual2[:,:,:x.size()[2],:x.size()[3]]), 1)
         x = self.u_layer3(x)
 
+        x = self.upconv4(x)
         tl, br = self.crop_position(residual1.size(), x.size())
         residual1 = residual1[:,:,tl[0]:br[0],tl[1]:br[1]]
         x = torch.cat((x, residual1[:,:,:x.size()[2],:x.size()[3]]), 1)
         x = self.u_layer4(x)
 
         x = self.out(x)
-
         return x
 
 
@@ -199,7 +230,7 @@ class UNet(nn.Module):
         Given res_shp and main_shp, return tl and br
         tl, br: proper upper left & bottom right pixel position to crop
         '''
-        tl = (int(0.5 * (res_shp.size()[2] - main_shp.size()[2])), int(0.5 * (res_shp.size()[3] - main_shp.size()[3])))
-        br = (tl[0] + main_shp.size()[2], tl[1] + main_shp.size()[3])
+        tl = (int(0.5 * (res_shp[2] - main_shp[2])), int(0.5 * (res_shp[3] - main_shp[3])))
+        br = (tl[0] + main_shp[2], tl[1] + main_shp[3])
 
         return tl, br

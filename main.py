@@ -35,7 +35,7 @@ def main():
     if config.m == 'v':
         solver.test_single(triplet_id=40, step_diff=(40, None), dataset='va')
     elif config.m == 'save':
-        save_to_h5(config, trva=True, polar=False, size=3)
+        save_to_h5(config, trva=True, polar=False, size=config.input_size)
     elif config.m == 'stats':
         get_stats(str(config.h5_dir_win) + "_tr.h5", str(config.h5_dir_win) + "_va.h5", config.nvar, verbose=True)
     elif config.m == 'p':
