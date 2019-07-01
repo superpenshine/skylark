@@ -60,7 +60,7 @@ class network(object):
             self.non_blocking = False
             self.pin_memory = False
             self.data_dir = str(config.h5_dir_win)
-            self.batch_size = 2
+            self.batch_size = 30
             self.valid_required = False
             self.epochs = 50
             self.min_step_diff = None

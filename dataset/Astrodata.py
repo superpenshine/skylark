@@ -65,7 +65,10 @@ class Astrodata(Dataset):
         '''
         # d, l_id, h_id, m_id = self.mapping(idx)
         try:
-            d, l_id, h_id, m_id = self.triplets[idx]
+            # Interpolation l=1, h=3, m=2, predict m
+            # Extrapolation l=1, m=3, h=2, predict m
+            # d, l_id, h_id, m_id = self.triplets[idx]
+            d, l_id, m_id, h_id = self.triplets[idx]
         except IndexError:
             raise IndexError("Maximum index supported is {}".format(self.__len__()))
         # print(d, l, h, m)
@@ -91,7 +94,7 @@ class Astrodata(Dataset):
                     h = transform(log_grid, h)
                     m = transform(log_grid, m)
                     continue
-                
+
                 l = transform(l)
                 h = transform(h)
                 m = transform(m)
