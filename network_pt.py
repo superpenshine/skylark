@@ -60,7 +60,7 @@ class network(object):
             self.non_blocking = False
             self.pin_memory = False
             self.data_dir = str(config.h5_dir_win)
-            self.batch_size = 30
+            self.batch_size = 10
             self.valid_required = True
             self.epochs = 100
             self.min_step_diff = None
@@ -164,12 +164,12 @@ class network(object):
 
         # import IPython
         # IPython.embed()
-        self.model = ResNet().to(self.device)
-        # self.model = UNet().to(self.device)
+        # self.model = ResNet().to(self.device)
+        self.model = UNet().to(self.device)
         self.optimizer = optim.Adam(self.model.parameters(), lr=self.lr)
         # self.scheduler = optim.lr_scheduler.MultiStepLR(self.optimizer, milestones=[1, 10], gamma=0.5)
         self.criterion = MSELoss().to(self.device) # set reduction=sum, or too smal to see
-        self.criterion_valid = L1Loss().to(self.device)
+        # self.criterion = L1Loss().to(self.device)
 
 
     def sanity_visualize(self):

@@ -27,15 +27,15 @@ sys_arg.add_argument("-m", type=str,
                     p: for preview''')
 
 sys_arg.add_argument("--data_dir", type=Path,
-                    # default='D:/sigma_data',
-                    default='/home/sht/data/sigma_data',
+                    default='D:/sigma_data',
+                    # default='/home/sht/data/sigma_data',
                     help="Directory to data folder")
 
 sys_arg.add_argument("--h5_dir_win", type=Path,
                     # default='D:/sigma_data/data_polar',
                     # default='D:/sigma_data/data_logpolar',
-                    default='D:/sigma_data/data_logpolar_resized32',
-                    # default='D:/sigma_data/data_logpolar_resized196',
+                    # default='D:/sigma_data/data_logpolar_resized32',
+                    default='D:/sigma_data/data_logpolar_resized100',
                     help="Win data file without the .h5 suffix")
 
 sys_arg.add_argument("--h5_dir_linux", type=Path,
@@ -92,22 +92,22 @@ sys_arg.add_argument("--valid_size", type=float,
 
 sys_arg.add_argument("--input_size", type=tuple, 
                     # default=(512, 512), # resized to half
-                    # default=(196, 196), # for UNet
-                    default=(32, 32), # for test use
+                    default=(100, 100), # for UNet
+                    # default=(32, 32), # for test use
                     help="Input image size")
 
 sys_arg.add_argument("--crop_size", type=tuple,
                     # default=(80, 80), 
-                    # default=(380, 380), # UNet, label_size + 184
-                    default=(48, 48),  # without randcrop, output size same as input
-                    # default=(32, 32), # with randcrop, output size will be smaller
+                    default=(284, 284), # UNet, label_size + 184
+                    # default=(48, 48),  # without randcrop, output size same as input
+                    # default=(32, 32), # with randcrop, ou2tput size will be smaller
                     # default=(24, 24), # evenn smaller patch
                     help='''Ramdom crop image size, tiling size.''')
 
 sys_arg.add_argument("--label_size", type=tuple,
                     # default=(64, 64), 
-                    # default=(196, 196), # UNet, must > 184, or wrong padding
-                    default=(32, 32),  # without randcrop, output size same as input
+                    default=(100, 100), # UNet, must > 184, or wrong padding
+                    # default=(32, 32),  # without randcrop, output size same as input
                     # default=(16, 16), # with randcrop, output size will be smaller
                     # default=(8, 8), # evenn smaller patch
                     help="Label image size, this is related to network model")
