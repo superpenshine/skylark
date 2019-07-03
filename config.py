@@ -87,7 +87,7 @@ sys_arg.add_argument("--nvar", type=int,
                     help="nvar number")
 
 sys_arg.add_argument("--valid_size", type=float,
-                    default=0.2,
+                    default=0.5,
                     help="Validation sample percentage (<=1.0)")
 
 sys_arg.add_argument("--input_size", type=tuple, 

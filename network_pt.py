@@ -61,8 +61,8 @@ class network(object):
             self.pin_memory = False
             self.data_dir = str(config.h5_dir_win)
             self.batch_size = 30
-            self.valid_required = False
-            self.epochs = 50
+            self.valid_required = True
+            self.epochs = 100
             self.min_step_diff = None
             self.num_workers = 0
             self.report_freq = 1
@@ -169,7 +169,7 @@ class network(object):
         self.optimizer = optim.Adam(self.model.parameters(), lr=self.lr)
         # self.scheduler = optim.lr_scheduler.MultiStepLR(self.optimizer, milestones=[1, 10], gamma=0.5)
         self.criterion = MSELoss().to(self.device) # set reduction=sum, or too smal to see
-        # self.criterion = L1Loss().to(self.device)
+        self.criterion_valid = L1Loss().to(self.device)
 
 
     def sanity_visualize(self):
@@ -536,7 +536,7 @@ class network(object):
                 loss = self.criterion(output + i1_crop, label)
                 valid_loss += loss.item()
                 n_batch += 1
-                print("batch{}, loss: {}".format(b_id, loss.item()))
+                print("batch{}, loss: {:.4f}".format(n_batch, loss.item()))
 
         return valid_loss / n_batch
 
@@ -619,14 +619,14 @@ class network(object):
             # self.scheduler.step(epoch)
             print("\n===> epoch: {}/{}".format(epoch, self.epochs))
             train_result = self.train()
-            print("Epoch {} loss: {}".format(epoch, train_result))
+            print("Epoch {} loss: {:.4f}".format(epoch, train_result))
             # test_result = self.test()
             if epoch % self.report_freq == 0:
                 if self.valid_required:
                     self.model.eval()
                     valid_result = self.valid()
                     self.writer.add_scalar('Valid/Loss', valid_result, self.step)
-                    print("Validation loss: {}".format(valid_result))
+                    print("Validation loss: {:.4f}".format(valid_result))
                 self.model.train()
                 self.writer.add_scalar('Train/Loss', train_result, self.step)
             self.writer._get_file_writer().flush()
