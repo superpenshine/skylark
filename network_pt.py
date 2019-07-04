@@ -716,7 +716,8 @@ class network(object):
             self.load(map_location=device)
         elif Path(self.checkpoint).exists():
             print("Model file does not exists, trying checkpoint")
-            self.model = ResNet().to(device)
+            # self.model = ResNet().to(device)
+            self.model = UNet().to(device)
             self.optimizer = optim.Adam(self.model.parameters(), lr=self.lr)
             self.load_checkpoint()
         else:
