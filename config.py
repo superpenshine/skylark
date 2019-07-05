@@ -34,21 +34,21 @@ sys_arg.add_argument("--data_dir", type=Path,
 sys_arg.add_argument("--h5_dir_win", type=Path,
                     # default='D:/sigma_data/data_polar',
                     # default='D:/sigma_data/data_logpolar',
-                    # default='D:/sigma_data/data_logpolar_resized32',
-                    default='D:/sigma_data/data_logpolar_resized100',
+                    default='D:/sigma_data/data_logpolar_resized32',
+                    # default='D:/sigma_data/data_logpolar_resized100',
                     help="Win data file without the .h5 suffix")
 
 sys_arg.add_argument("--h5_dir_linux", type=Path,
                     # default='/home/sht/data/sigma_data/data_polar', 
                     # default='/home/sht/data/sigma_data/data_logpolar', 
-                    # default='/home/sht/data/sigma_data/data_logpolar_resized32',
-                    default='/home/sht/data/sigma_data/data_logpolar_resized100',
+                    default='/home/sht/data/sigma_data/data_logpolar_resized32',
+                    # default='/home/sht/data/sigma_data/data_logpolar_resized100',
                     # default='/home/sht/data/sigma_data/data_logpolar_resized196', 
                     # default='/home/sht/data/sigma_data/data_logpolar_resized512', 
                     help="Linux data file without the .h5 suffix")
 
 sys_arg.add_argument("--min_step_diff", type=int,
-                    default=None,
+                    default=74,
                     help="None or an integer indicating min step difference")
 
 sys_arg.add_argument("--max_step_diff", type=int,
@@ -56,19 +56,19 @@ sys_arg.add_argument("--max_step_diff", type=int,
                     help="None or an integer indicating max step difference")
 
 sys_arg.add_argument("--batch_size", type=int,
-                    default=40,
+                    default=1,
                     help="Batch size")
 
 sys_arg.add_argument("--lr", type=float,
-                    default=0.00001,
+                    default=0.0001,
                     help="Learning rate")
 
 sys_arg.add_argument("--epochs", type=int,
-                    default=20000,
+                    default=3000,
                     help="Number of epochs")
 
 sys_arg.add_argument("--num_workers", type=int,
-                    default=8,
+                    default=0,
                     help="Number of dataloader workers")
 
 sys_arg.add_argument("--f_gird", type=Path,
@@ -93,13 +93,14 @@ sys_arg.add_argument("--valid_size", type=float,
 
 sys_arg.add_argument("--input_size", type=tuple, 
                     # default=(512, 512), # resized to half
-                    default=(100, 100), # for UNet
-                    # default=(32, 32), # for test use
+                    # default=(100, 100), # for UNet4
+                    default=(32, 32), # for test use, UNet2
                     help="Input image size")
 
 sys_arg.add_argument("--crop_size", type=tuple,
                     # default=(80, 80), 
-                    default=(284, 284), # UNet, label_size + 184
+                    # default=(284, 284), # UNet4, label_size + 184
+                    default=(72, 72), # UNet2
                     # default=(48, 48),  # without randcrop, output size same as input
                     # default=(32, 32), # with randcrop, ou2tput size will be smaller
                     # default=(24, 24), # evenn smaller patch
@@ -107,18 +108,18 @@ sys_arg.add_argument("--crop_size", type=tuple,
 
 sys_arg.add_argument("--label_size", type=tuple,
                     # default=(64, 64), 
-                    default=(100, 100), # UNet, must > 184, or wrong padding
-                    # default=(32, 32),  # without randcrop, output size same as input
+                    # default=(100, 100), # UNet4, must > 184, or wrong padding
+                    default=(32, 32),  # without randcrop, output size same as input, UNet2
                     # default=(16, 16), # with randcrop, output size will be smaller
                     # default=(8, 8), # evenn smaller patch
                     help="Label image size, this is related to network model")
 
 sys_arg.add_argument("--checkpoint_freq", type=int, 
-                    default=20, 
+                    default=1, 
                     help="Number of epochs between each checkpoint")
 
 sys_arg.add_argument("--report_freq", type=int, 
-                    default=20, 
+                    default=1, 
                     help="Number of epochs between each summary write")
 
 sys_arg.add_argument("--cuda", type=bool, 

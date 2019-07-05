@@ -16,10 +16,11 @@ class ResUnit(nn.Module):
         super(ResUnit, self).__init__()
         self.conv1 = ConvBlock(fan_in, fan_out, stride=stride)
         # self.bn = nn.BatchNorm2d(fan_out)
-        self.gn1 = nn.GroupNorm(1, fan_out)
-        self.relu = nn.ReLU(inplace=True)
+        self.gn1 = nn.GroupNorm(32, fan_out)
+        self.relu1 = nn.ReLU(inplace=True)
         self.conv2 = ConvBlock(fan_out, fan_out)
-        self.gn2 = nn.GroupNorm(1, fan_out)
+        self.gn2 = nn.GroupNorm(32, fan_out)
+        self.relu2 = nn.ReLU(inplace=True)
         self.downsample = downsample
 
 
@@ -28,10 +29,11 @@ class ResUnit(nn.Module):
 
         out = self.conv1(x)
         out = self.gn1(out)
-        out = self.relu(out)
+        out = self.relu1(out)
 
         out = self.conv2(out)
         out = self.gn2(out)
+        out = self.relu2(out)
 
         if self.downsample is not None:
             residual = self.downsample(x)
@@ -40,7 +42,6 @@ class ResUnit(nn.Module):
         br = (tl[0] + out.size()[2], tl[1] + out.size()[3])
         residual = residual[:,:,tl[0]:br[0],tl[1]:br[1]]
         out = out + residual
-        out = self.relu(out)
 
         return out
 
@@ -144,18 +145,18 @@ class UNet2(nn.Module):
     def __init__(self):
         super(UNet, self).__init__()
         self.fan_in = 8
-        self.d_layer1 = self._make_layer(DoubleConv, 64)
-        self.d_layer2 = self._make_layer(DoubleConv, 128)
+        self.d_layer1 = self._make_layer(DoubleConv, 256)
+        self.d_layer2 = self._make_layer(DoubleConv, 512)
         self.pool = MaxPool()
 
         self.bot_layer = self._make_layer(DoubleConv, 1024)
 
-        self.upconv3 = self._make_layer(UpConv, 128)
-        self.u_layer3 = self._make_layer(DoubleConv, 128, cat=128)
-        self.upconv4 = self._make_layer(UpConv, 64)
-        self.u_layer4 = self._make_layer(DoubleConv, 64, cat=64)
+        self.upconv3 = self._make_layer(UpConv, 512)
+        self.u_layer3 = self._make_layer(DoubleConv, 512, cat=512)
+        self.upconv4 = self._make_layer(UpConv, 256)
+        self.u_layer4 = self._make_layer(DoubleConv, 256, cat=256)
 
-        self.out = nn.Conv2d(64, 4, kernel_size=1, stride=1, bias=True)
+        self.out = nn.Conv2d(256, 4, kernel_size=1, stride=1, bias=True)
 
 
     def _make_layer(self, block, fan_out, cat=0):
