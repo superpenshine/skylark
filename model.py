@@ -143,7 +143,7 @@ class UNet2(nn.Module):
     UNet
     '''
     def __init__(self):
-        super(UNet, self).__init__()
+        super(UNet2, self).__init__()
         self.fan_in = 8
         self.d_layer1 = self._make_layer(DoubleConv, 256)
         self.d_layer2 = self._make_layer(DoubleConv, 512)

@@ -9,7 +9,7 @@ import time
 import numpy as np
 import matplotlib.pyplot as plt
 
-from model import ResNet, UNet
+from model import ResNet, UNet, UNet2
 from pathlib import Path
 from util.data_util import get_stats
 from util.transform import *
