@@ -164,9 +164,9 @@ class network(object):
 
         # import IPython
         # IPython.embed()
-        # self.model = ResNet().to(self.device)
+        self.model = ResNet().to(self.device)
         # self.model = UNet().to(self.device)
-        self.model = UNet2().to(self.device)
+        # self.model = UNet2().to(self.device)
         self.optimizer = optim.Adam(self.model.parameters(), lr=self.lr)
         # self.scheduler = optim.lr_scheduler.MultiStepLR(self.optimizer, milestones=[1, 10], gamma=0.5)
         self.criterion = MSELoss().to(self.device) # set reduction=sum, or too smal to see
@@ -635,7 +635,7 @@ class network(object):
                 self.save_checkpoint(accuracy, epoch)
 
         print("Training finished")
-        self.writer._get_file_writer().flush()
+        self.writer.close()
         self.save()
 
         # # Remove the checkpoint when complete and the model is saved
@@ -696,9 +696,9 @@ class network(object):
         i1_normed = norm(np.array(i1))
         label_normed = norm(np.array(label))
         # self.writer.add_images('triplet', np.expand_dims(np.stack([i0[:,:,var], label[:,:,var], i1[:,:,var]]), 3), dataformats='NHWC')
-        self.writer.add_images('i0', i0[:,:,var], dataformats='HW')
-        self.writer.add_images('i1', i1[:,:,var], dataformats='HW')
-        self.writer.add_images('label', label[:,:,var], dataformats='HW')
+        self.writer.add_image('i0', i0[:,:,var], dataformats='HW')
+        self.writer.add_image('i1', i1[:,:,var], dataformats='HW')
+        self.writer.add_image('label', label[:,:,var], dataformats='HW')
         pad = transforms.Compose([CustomPad((math.ceil((self.crop_size[1] - self.label_size[1])/2), 0, math.ceil((self.crop_size[1] - self.label_size[1])/2), 0), 'circular'), 
                                   CustomPad((0, math.ceil((self.crop_size[0] - self.label_size[0])/2), 0, math.ceil((self.crop_size[0] - self.label_size[0])/2)), 'zero', constant_values=0)])
         i0_padded = pad(i0_normed)
@@ -717,9 +717,9 @@ class network(object):
             self.load(map_location=device)
         elif Path(self.checkpoint).exists():
             print("Model file does not exists, trying checkpoint")
-            # self.model = ResNet().to(device)
+            self.model = ResNet().to(device)
             # self.model = UNet().to(device)
-            self.model = UNet2().to(device)
+            # self.model = UNet2().to(device)
             self.optimizer = optim.Adam(self.model.parameters(), lr=self.lr)
             self.load_checkpoint()
         else:
@@ -822,7 +822,7 @@ class network(object):
         self.writer.add_image('resized_i0', i0, dataformats='HW')
         self.writer.add_image('resized_i1', i1, dataformats='HW')
         self.writer.add_image('resized_label', label, dataformats='HW')
-        self.writer._get_file_writer().flush()
+        self.writer.close()
         
         # plt.savefig("a.png")
         print("triplet id: ", triplet_id)

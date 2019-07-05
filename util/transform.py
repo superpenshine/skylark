@@ -139,7 +139,7 @@ class Normalize(object):
 
 class ToTensor(object):
     '''
-    Convet numpy array to tensor
+    Convet numpy array of HWC to tensor CHW
     Take ndarray as input
     '''
     def __call__(self, img):
