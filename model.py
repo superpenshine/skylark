@@ -3,6 +3,16 @@ import torch
 import torch.nn as nn
 
 
+def crop_position(res_shp, main_shp):
+    '''
+    Given res_shp and main_shp, return tl and br
+    tl, br: proper upper left & bottom right pixel position to crop
+    '''
+    tl = (int(0.5 * (res_shp[2] - main_shp[2])), int(0.5 * (res_shp[3] - main_shp[3])))
+    br = (tl[0] + main_shp[2], tl[1] + main_shp[3])
+
+    return tl, br
+
 def ConvBlock(fan_in, fan_out, stride=1, bias=False):
     '''
     3x3 convolution with padding
@@ -147,14 +157,15 @@ class UNet2(nn.Module):
         self.fan_in = 8
         self.d_layer1 = self._make_layer(DoubleConv, 256)
         self.d_layer2 = self._make_layer(DoubleConv, 512)
-        self.pool = MaxPool()
+        self.pool1 = MaxPool()
+        self.pool2 = MaxPool()
 
         self.bot_layer = self._make_layer(DoubleConv, 1024)
 
-        self.upconv3 = self._make_layer(UpConv, 512)
-        self.u_layer3 = self._make_layer(DoubleConv, 512, cat=512)
-        self.upconv4 = self._make_layer(UpConv, 256)
-        self.u_layer4 = self._make_layer(DoubleConv, 256, cat=256)
+        self.upconv1 = self._make_layer(UpConv, 512)
+        self.u_layer1 = self._make_layer(DoubleConv, 512, cat=512)
+        self.upconv2 = self._make_layer(UpConv, 256)
+        self.u_layer2 = self._make_layer(DoubleConv, 256, cat=256)
 
         self.out = nn.Conv2d(256, 4, kernel_size=1, stride=1, bias=True)
 
@@ -176,45 +187,25 @@ class UNet2(nn.Module):
         x = self.d_layer1(x)
         residual1 = x
 
-        x = self.pool(x)
+        x = self.pool1(x)
         x = self.d_layer2(x) 
         residual2 = x
 
-        x = self.pool(x)
-        x = self.d_layer3(x)
-        residual3 = x
-
-        x = self.pool(x)
-        x = self.d_layer4(x)
-        residual4 = x
-
-        x = self.pool(x)
+        x = self.pool2(x)
 
         x = self.bot_layer(x)
 
         x = self.upconv1(x)
-        tl, br = self.crop_position(residual4.size(), x.size())
-        residual4 = residual4[:,:,tl[0]:br[0],tl[1]:br[1]]
-        x = torch.cat((x, residual4[:,:,:x.size()[2],:x.size()[3]]), 1)
+        tl, br = crop_position(residual2.size(), x.size())
+        residual2 = residual2[:,:,tl[0]:br[0],tl[1]:br[1]]
+        x = torch.cat((x, residual2[:,:,:x.size()[2],:x.size()[3]]), 1)
         x = self.u_layer1(x)
 
         x = self.upconv2(x)
-        tl, br = self.crop_position(residual3.size(), x.size())
-        residual3 = residual3[:,:,tl[0]:br[0],tl[1]:br[1]]
-        x = torch.cat((x, residual3[:,:,:x.size()[2],:x.size()[3]]), 1)
-        x = self.u_layer2(x)
-
-        x = self.upconv3(x)
-        tl, br = self.crop_position(residual2.size(), x.size())
-        residual2 = residual2[:,:,tl[0]:br[0],tl[1]:br[1]]
-        x = torch.cat((x, residual2[:,:,:x.size()[2],:x.size()[3]]), 1)
-        x = self.u_layer3(x)
-
-        x = self.upconv4(x)
-        tl, br = self.crop_position(residual1.size(), x.size())
+        tl, br = crop_position(residual1.size(), x.size())
         residual1 = residual1[:,:,tl[0]:br[0],tl[1]:br[1]]
         x = torch.cat((x, residual1[:,:,:x.size()[2],:x.size()[3]]), 1)
-        x = self.u_layer4(x)
+        x = self.u_layer2(x)
 
         x = self.out(x)
         return x
@@ -281,25 +272,25 @@ class UNet(nn.Module):
         x = self.bot_layer(x)
 
         x = self.upconv1(x)
-        tl, br = self.crop_position(residual4.size(), x.size())
+        tl, br = crop_position(residual4.size(), x.size())
         residual4 = residual4[:,:,tl[0]:br[0],tl[1]:br[1]]
         x = torch.cat((x, residual4[:,:,:x.size()[2],:x.size()[3]]), 1)
         x = self.u_layer1(x)
 
         x = self.upconv2(x)
-        tl, br = self.crop_position(residual3.size(), x.size())
+        tl, br = crop_position(residual3.size(), x.size())
         residual3 = residual3[:,:,tl[0]:br[0],tl[1]:br[1]]
         x = torch.cat((x, residual3[:,:,:x.size()[2],:x.size()[3]]), 1)
         x = self.u_layer2(x)
 
         x = self.upconv3(x)
-        tl, br = self.crop_position(residual2.size(), x.size())
+        tl, br = crop_position(residual2.size(), x.size())
         residual2 = residual2[:,:,tl[0]:br[0],tl[1]:br[1]]
         x = torch.cat((x, residual2[:,:,:x.size()[2],:x.size()[3]]), 1)
         x = self.u_layer3(x)
 
         x = self.upconv4(x)
-        tl, br = self.crop_position(residual1.size(), x.size())
+        tl, br = crop_position(residual1.size(), x.size())
         residual1 = residual1[:,:,tl[0]:br[0],tl[1]:br[1]]
         x = torch.cat((x, residual1[:,:,:x.size()[2],:x.size()[3]]), 1)
         x = self.u_layer4(x)
@@ -308,12 +299,4 @@ class UNet(nn.Module):
         return x
 
 
-    def crop_position(self, res_shp, main_shp):
-        '''
-        Given res_shp and main_shp, return tl and br
-        tl, br: proper upper left & bottom right pixel position to crop
-        '''
-        tl = (int(0.5 * (res_shp[2] - main_shp[2])), int(0.5 * (res_shp[3] - main_shp[3])))
-        br = (tl[0] + main_shp[2], tl[1] + main_shp[3])
 
-        return tl, br
