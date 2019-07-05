@@ -165,7 +165,8 @@ class network(object):
         # import IPython
         # IPython.embed()
         # self.model = ResNet().to(self.device)
-        self.model = UNet().to(self.device)
+        # self.model = UNet().to(self.device)
+        self.model = UNet2().to(self.device)
         self.optimizer = optim.Adam(self.model.parameters(), lr=self.lr)
         # self.scheduler = optim.lr_scheduler.MultiStepLR(self.optimizer, milestones=[1, 10], gamma=0.5)
         self.criterion = MSELoss().to(self.device) # set reduction=sum, or too smal to see
@@ -717,7 +718,8 @@ class network(object):
         elif Path(self.checkpoint).exists():
             print("Model file does not exists, trying checkpoint")
             # self.model = ResNet().to(device)
-            self.model = UNet().to(device)
+            # self.model = UNet().to(device)
+            self.model = UNet2().to(device)
             self.optimizer = optim.Adam(self.model.parameters(), lr=self.lr)
             self.load_checkpoint()
         else:
