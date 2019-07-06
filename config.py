@@ -41,7 +41,8 @@ sys_arg.add_argument("--h5_dir_win", type=Path,
 sys_arg.add_argument("--h5_dir_linux", type=Path,
                     # default='/home/sht/data/sigma_data/data_polar', 
                     # default='/home/sht/data/sigma_data/data_logpolar', 
-                    default='/home/sht/data/sigma_data/data_logpolar_resized32',
+                    # default='/home/sht/data/sigma_data/data_logpolar_resized32',
+                    default='/home/hshen/data/sigma_data/data_logpolar_resized32', # for kingwood only
                     # default='/home/sht/data/sigma_data/data_logpolar_resized100',
                     # default='/home/sht/data/sigma_data/data_logpolar_resized196', 
                     # default='/home/sht/data/sigma_data/data_logpolar_resized512', 
@@ -64,7 +65,7 @@ sys_arg.add_argument("--lr", type=float,
                     help="Learning rate")
 
 sys_arg.add_argument("--epochs", type=int,
-                    default=200,
+                    default=3000,
                     help="Number of epochs")
 
 sys_arg.add_argument("--num_workers", type=int,
