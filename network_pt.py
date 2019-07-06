@@ -59,11 +59,11 @@ class network(object):
         if os.name == 'nt':
             self.non_blocking = False
             self.pin_memory = False
-            self.data_dir = str(config.h5_dir_win)
-            self.batch_size = 10
             self.valid_required = True
-            self.epochs = 100
-            self.min_step_diff = None
+            self.data_dir = str(config.h5_dir_win)
+            self.batch_size = 1
+            self.epochs = 3000
+            self.min_step_diff = 74
             self.num_workers = 0
             self.report_freq = 1
             self.checkpoint_freq = 1
@@ -479,6 +479,7 @@ class network(object):
             # time2 = time.time()
             # print("crop: ", time2 - time1)
             duo = torch.cat([_i0, _i1], dim=1)
+            duo = torch.reshape(duo, (self.batch_size, 8*self.crop_size[0], 1, -1))
             # torch.cuda.synchronize()
             # time3 = time.time()
             # print("cat: ", time3 - time2)
@@ -491,6 +492,7 @@ class network(object):
             # time5=time.time()
             # print("fwd pass: ", time5 - time4)
             # print(self.model.state_dict().keys())
+            output = torch.reshape(output, (self.batch_size, 4, self.label_size[0], -1))
             loss = self.criterion(output + i1_crop, label)
             # torch.cuda.synchronize()
             # time6 = time.time()
@@ -532,8 +534,10 @@ class network(object):
                 i1_crop = _i1[:,:,self.ltl[0]:self.lbr[0],self.ltl[1]:self.lbr[1]]
                 # Concatenate two input imgs in NCHW format
                 duo = torch.cat([_i0, _i1], dim=1)
+                duo = torch.reshape(duo, (self.batch_size, 8*self.crop_size[0], 1, -1))
                 output = self.model(duo)
-                # L1 Loss
+                output = torch.reshape(output, (self.batch_size, 4, self.label_size[0], -1))
+                # MSE Loss
                 loss = self.criterion(output + i1_crop, label)
                 valid_loss += loss.item()
                 n_batch += 1
@@ -644,15 +648,17 @@ class network(object):
         # print("Checkpoint removed upon training complete")
 
 
-    def test_single(self, triplet_id = None, step_diff = None, audience = 'astro', dataset = 'va'):
+    def test_single(self, triplet_id = None, step_diff = None, audience = 'normal', dataset = 'va'):
         '''
         Visualize using trained model
         triplet_id: triplet index to use, default will be random
         step_diff: a tuple of (min_step_diff, max_step_diff)
-        audience: 'astro' or 'cs' for different visualization arrangement
+        audience: 'normal' or 'pipeline' for different visualization arrangement
         '''
         var = 1
         n_row = 5
+        pick = chan(var)
+
         if step_diff:
             self.min_step_diff = step_diff[0]
             self.max_step_diff = step_diff[1]
@@ -695,12 +701,14 @@ class network(object):
         i0_normed = norm(np.array(i0))
         i1_normed = norm(np.array(i1))
         label_normed = norm(np.array(label))
-        # self.writer.add_images('triplet', np.expand_dims(np.stack([i0[:,:,var], label[:,:,var], i1[:,:,var]]), 3), dataformats='NHWC')
-        self.writer.add_image('i0', i0[:,:,var], dataformats='HW')
-        self.writer.add_image('i1', i1[:,:,var], dataformats='HW')
-        self.writer.add_image('label', label[:,:,var], dataformats='HW')
         pad = transforms.Compose([CustomPad((math.ceil((self.crop_size[1] - self.label_size[1])/2), 0, math.ceil((self.crop_size[1] - self.label_size[1])/2), 0), 'circular'), 
                                   CustomPad((0, math.ceil((self.crop_size[0] - self.label_size[0])/2), 0, math.ceil((self.crop_size[0] - self.label_size[0])/2)), 'zero', constant_values=0)])
+        
+        # self.writer.add_images('triplet', np.expand_dims(np.stack([i0[:,:,var], label[:,:,var], i1[:,:,var]]), 3), dataformats='NHWC')
+        self.writer.add_image('img4_i0padded', pick(pad(i0)), dataformats='HW')
+        self.writer.add_image('img5_i1padded', pick(pad(i1)), dataformats='HW')
+        self.writer.add_image('img2_label', pick(label), dataformats='HW')
+
         i0_padded = pad(i0_normed)
         i1_padded = pad(i1_normed)
 
@@ -730,14 +738,16 @@ class network(object):
         self.model.eval()
         with torch.no_grad():
             duo = torch.cat([i0_padded, i1_padded], dim=0)
-            duo = torch.unsqueeze(duo, 0)
+            duo = torch.reshape(duo, (self.batch_size, 8*self.crop_size[0], 1, -1))
+            # pdb.set_trace()
+            # duo = torch.unsqueeze(duo, 0)
             output = self.model(duo)
+            output = torch.reshape(output, (self.batch_size, 4, self.label_size[0], -1))
             out = output[0] + i1_normed
             residue = out - label_normed
 
         # Visualize and add to summary
-        pick = chan(var)
-
+        output = output[0]
         out_unormed = pick(out) * std[var] + mean[var]
         residue_unormed = np.array(out_unormed) - pick(label)
         original_diff = i0 - label
@@ -745,8 +755,11 @@ class network(object):
         i0 = pick(i0)
         i1 = pick(i1)
         label = pick(label)
+        output = pick(output)
+        i0_padded = pick(i0_padded)
+        i1_padded = pick(i1_padded)
         # plt.figure(figsize=(20, 4), dpi=200) # default dpi 6.4, 4.8
-        if audience == 'astro':
+        if audience == 'normal':
             plt.subplot(251)
             plt.title('i0')
             plt.imshow(i0)
@@ -788,40 +801,25 @@ class network(object):
             plt.title('Residue_normed')
             plt.imshow(pick(residue))
             plt.colorbar()
-        elif audience == 'cs':
-            plt.subplot(241)
-            plt.title('GT')
-            plt.imshow(label_normed[var])   
-            plt.colorbar() 
-            plt.subplot(242)
-            plt.title('Out')
-            plt.imshow(out_unormed)
+        elif audience == 'pipeline':
+            plt.subplot(131)
+            plt.title('i0_padded')
+            plt.imshow(i0_padded)
             plt.colorbar()
-            plt.subplot(243)
-            plt.title('i1_cropped')
-            plt.imshow(pick(i1_normed))
+            plt.subplot(132)
+            plt.title('i1_padded')
+            plt.imshow(i1_padded)
             plt.colorbar()
-            # Calculate max/min of resudue & original difference together
-            vmax = max(np.amax(residue_unormed), np.amax(original_diff))
-            vmin = min(np.amin(residue_unormed), np.amin(original_diff))
-            plt.subplot(244)
-            plt.title('Out-GT(rescaled)')
-            plt.imshow(residue_unormed, vmin = vmin, vmax = vmax)
-            plt.colorbar()
-            plt.subplot(247)
-            plt.title('Out-GT')
-            plt.imshow(residue_unormed)
-            plt.colorbar()
-            plt.subplot(248)
-            plt.title('i1_cropped-GT(rescaled)')
-            plt.imshow(original_diff, vmin = vmin, vmax = vmax)
+            plt.subplot(133)
+            plt.title('Network_immediate_output')
+            plt.imshow(output)
             plt.colorbar()
 
-        self.writer.add_image('residue', residue_unormed + 0.5, dataformats='HW')
-        self.writer.add_image('synthetic', out_unormed + 0.5, dataformats='HW')
-        self.writer.add_image('resized_i0', i0, dataformats='HW')
-        self.writer.add_image('resized_i1', i1, dataformats='HW')
-        self.writer.add_image('resized_label', label, dataformats='HW')
+        self.writer.add_image('img7_network_output', output + torch.min(output), dataformats='HW')
+        self.writer.add_image('img6_residue', residue_unormed + np.amin(residue_unormed), dataformats='HW')
+        self.writer.add_image('img3_synthetic', out_unormed + torch.min(out_unormed), dataformats='HW')
+        self.writer.add_image('img0_resized_i0', i0, dataformats='HW')
+        self.writer.add_image('img1_resized_i1', i1, dataformats='HW')
         self.writer.close()
         
         # plt.savefig("a.png")
