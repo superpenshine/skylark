@@ -9,7 +9,8 @@ from functools import partial
 from scipy.ndimage import map_coordinates
 
 np_pad_name = {'zero':'constant', 
-               'circular': 'wrap'}
+               'circular': 'wrap', 
+               'edge': 'edge'}
 
 class CustomPad(object):
     """
