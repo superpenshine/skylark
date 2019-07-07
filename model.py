@@ -63,11 +63,11 @@ class ResNet(nn.Module):
     def __init__(self):
         super(ResNet, self).__init__()
         self.fan_in = 64
-        self.conv1 = ConvBlock(384, 64, bias=True)
+        self.conv1 = ConvBlock(96, 64, bias=True)
         self.layer1 = self._make_layer(ResUnit, 128, 1)
         self.layer2 = self._make_layer(ResUnit, 256, 1)
         self.layer3 = self._make_layer(ResUnit, 512, 1)
-        self.out_conv = ConvBlock(512, 128, bias=True)
+        self.out_conv = ConvBlock(512, 32, bias=True)
 
 
     def _make_layer(self, block, fan_out, blocks, stride=1, **kwargs):
