@@ -200,7 +200,7 @@ class network(object):
         start = time.time()
         for b_id, (i0, i1, label) in enumerate(self.train_loader):
             label, _i0, _i1 = label.to(self.device, non_blocking = self.non_blocking), i0.to(self.device, non_blocking = self.non_blocking), i1.to(self.device, non_blocking = self.non_blocking)
-            i1_crop = _i1[:,:,self.ltl[0]:self.lbr[0],self.ltl[1]:self.lbr[1]]
+            i1_crop = _i1[:,:,self.ltl[0]:self.lbr[0],self.ltl[1]:self.lbr[1]] 
             duo = torch.cat([_i0, _i1], dim=1)
             duo = torch.reshape(duo, (self.batch_size, 8*self.crop_size[0], 1, -1))
             self.optimizer.zero_grad()
@@ -445,7 +445,7 @@ class network(object):
 
         # Visualize and add to summary
         output = output[0]
-        out_unormed = pick(out) * std[var] + mean[var]
+        out_unormed = pick(out) * pick(std) + pick(mean)
         residue_unormed = np.array(out_unormed) - pick(label)
         original_diff = i0 - label
         original_diff = pick(original_diff)
