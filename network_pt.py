@@ -437,26 +437,23 @@ class network(object):
         # Run the network with input
         self.model.eval()
         with torch.no_grad():
+            i0_padded = torch.unsqueeze(pick(i0_padded), 0)
+            i1_padded = torch.unsqueeze(pick(i1_padded), 0)
             duo = torch.cat([i0_padded, i1_padded], dim=0)
-            duo = torch.reshape(duo, (self.batch_size, 8*self.crop_size[0], 1, -1))
-            # duo = torch.unsqueeze(duo, 0)
+            duo = torch.unsqueeze(duo, 0)
             output = self.model(duo)
-            output = torch.reshape(output, (self.batch_size, 4, self.label_size[0], -1))
-            out = output[0] + i1_normed
-            residue = out - label_normed
+            out = output[0] + torch.unsqueeze(pick(i1_normed), 0)
+            residue = out - torch.unsqueeze(pick(label_normed), 0)
 
         # Visualize and add to summary
         output = output[0]
-        out_unormed = pick(out) * pick(std) + pick(mean)
+        out_unormed = out * std[var] + mean[var]
         residue_unormed = np.array(out_unormed) - pick(label)
         original_diff = i0 - label
         original_diff = pick(original_diff)
         i0 = pick(i0)
         i1 = pick(i1)
         label = pick(label)
-        output = pick(output)
-        i0_padded = pick(i0_padded)
-        i1_padded = pick(i1_padded)
         # plt.figure(figsize=(20, 4), dpi=200) # default dpi 6.4, 4.8
         if audience == 'normal':
             plt.subplot(251)
@@ -473,11 +470,11 @@ class network(object):
             plt.colorbar() 
             plt.subplot(254)
             plt.title('Out')
-            plt.imshow(out_unormed)
+            plt.imshow(out_unormed[0])
             plt.colorbar()
             plt.subplot(255)
             plt.title('Residue')
-            plt.imshow(residue_unormed)
+            plt.imshow(residue_unormed[0])
             plt.colorbar()
             # Second row
             plt.subplot(256)
@@ -494,24 +491,24 @@ class network(object):
             plt.colorbar()
             plt.subplot(259)
             plt.title('Out_normed')
-            plt.imshow(pick(out))
+            plt.imshow(out[0])
             plt.colorbar()
             plt.subplot(2, 5, 10)
             plt.title('Residue_normed')
-            plt.imshow(pick(residue))
+            plt.imshow(residue[0])
             plt.colorbar()
         elif audience == 'pipeline':
             plt.subplot(131)
             plt.title('i0_padded')
-            plt.imshow(i0_padded)
+            plt.imshow(i0_padded[0])
             plt.colorbar()
             plt.subplot(132)
             plt.title('i1_padded')
-            plt.imshow(i1_padded)
+            plt.imshow(i1_padded[0])
             plt.colorbar()
             plt.subplot(133)
             plt.title('Network_immediate_output')
-            plt.imshow(output)
+            plt.imshow(output[0])
             plt.colorbar()
         else:
             raise ValueError("Unknown audience")
@@ -520,9 +517,9 @@ class network(object):
         self.writer.add_image('img4_i0padded', pad(i0), dataformats='HW')
         self.writer.add_image('img5_i1padded', pad(i1), dataformats='HW')
         self.writer.add_image('img2_label', label, dataformats='HW')
-        self.writer.add_image('img7_network_output', output + torch.min(output), dataformats='HW')
-        self.writer.add_image('img6_residue', residue_unormed + np.amin(residue_unormed), dataformats='HW')
-        self.writer.add_image('img3_synthetic', out_unormed + torch.min(out_unormed), dataformats='HW')
+        self.writer.add_image('img7_network_output', output + torch.min(output), dataformats='CHW')
+        self.writer.add_image('img6_residue', residue_unormed + np.amin(residue_unormed), dataformats='CHW')
+        self.writer.add_image('img3_synthetic', out_unormed + torch.min(out_unormed), dataformats='CHW')
         self.writer.add_image('img0_resized_i0', i0, dataformats='HW')
         self.writer.add_image('img1_resized_i1', i1, dataformats='HW')
         self.writer.close()
