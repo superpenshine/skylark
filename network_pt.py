@@ -203,11 +203,11 @@ class network(object):
             i1 = torch.unsqueeze(i1[:,1], 1)
             label = torch.unsqueeze(label[:,1], 1)
             label, _i0, _i1 = label.to(self.device, non_blocking = self.non_blocking), i0.to(self.device, non_blocking = self.non_blocking), i1.to(self.device, non_blocking = self.non_blocking)
-            i0_crop = _i0[:,:,self.ltl[0]:self.lbr[0],self.ltl[1]:self.lbr[1]] 
+            i1_crop = _i1[:,:,self.ltl[0]:self.lbr[0],self.ltl[1]:self.lbr[1]] 
             duo = torch.cat([_i0, _i1], dim=1)
             self.optimizer.zero_grad()
             output = self.model(duo)
-            loss = self.criterion(output + i0_crop, label)
+            loss = self.criterion(output + i1_crop, label)
             loss.backward()
             self.optimizer.step()
             train_loss += loss.item()
@@ -235,12 +235,12 @@ class network(object):
                 label = torch.unsqueeze(label[:,1], 1)
                 label, _i0, _i1 = label.to(self.device, non_blocking = self.non_blocking), i0.to(self.device, non_blocking = self.non_blocking), i1.to(self.device, non_blocking = self.non_blocking)
                 # Only cut i1 for err calc
-                i0_crop = _i0[:,:,self.ltl[0]:self.lbr[0],self.ltl[1]:self.lbr[1]]
+                i1_crop = _i1[:,:,self.ltl[0]:self.lbr[0],self.ltl[1]:self.lbr[1]]
                 # Concatenate two input imgs in NCHW format
                 duo = torch.cat([_i0, _i1], dim=1)
                 output = self.model(duo)
                 # MSE Loss
-                loss = self.criterion(output + i0_crop, label)
+                loss = self.criterion(output + i1_crop, label)
                 valid_loss += loss.item()
                 n_batch += 1
                 print("batch{}, loss: {:.4f}".format(n_batch, loss.item()))
@@ -442,7 +442,7 @@ class network(object):
             duo = torch.cat([i0_padded, i1_padded], dim=0)
             duo = torch.unsqueeze(duo, 0)
             output = self.model(duo)
-            out = output[0] + torch.unsqueeze(pick(i0_normed), 0)
+            out = output[0] + torch.unsqueeze(pick(i1_normed), 0)
             residue = out - torch.unsqueeze(pick(label_normed), 0)
 
         # Visualize and add to summary
