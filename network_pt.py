@@ -199,9 +199,9 @@ class network(object):
         n_batch = 0
         start = time.time()
         for b_id, (i0, i1, label) in enumerate(self.train_loader):
-            i0 = torch.unsqueeze(i0[:,1], 1)
-            i1 = torch.unsqueeze(i1[:,1], 1)
-            label = torch.unsqueeze(label[:,1], 1)
+            i0 = i0[:,1:2]
+            i1 = i1[:,1:2]
+            label = label[:,1:2]
             label, _i0, _i1 = label.to(self.device, non_blocking = self.non_blocking), i0.to(self.device, non_blocking = self.non_blocking), i1.to(self.device, non_blocking = self.non_blocking)
             i1_crop = _i1[:,:,self.ltl[0]:self.lbr[0],self.ltl[1]:self.lbr[1]] 
             duo = torch.cat([_i0, _i1], dim=1)
@@ -230,9 +230,9 @@ class network(object):
 
         with torch.no_grad():
             for b_id, (i0, i1, label) in enumerate(self.valid_loader):
-                i0 = torch.unsqueeze(i0[:,1], 1)
-                i1 = torch.unsqueeze(i1[:,1], 1)
-                label = torch.unsqueeze(label[:,1], 1)
+                i0 = i0[:,1:2]
+                i1 = i1[:,1:2]
+                label = label[:,1:2]
                 label, _i0, _i1 = label.to(self.device, non_blocking = self.non_blocking), i0.to(self.device, non_blocking = self.non_blocking), i1.to(self.device, non_blocking = self.non_blocking)
                 # Only cut i1 for err calc
                 i1_crop = _i1[:,:,self.ltl[0]:self.lbr[0],self.ltl[1]:self.lbr[1]]
@@ -437,13 +437,13 @@ class network(object):
         # Run the network with input
         self.model.eval()
         with torch.no_grad():
-            i0_padded = torch.unsqueeze(pick(i0_padded), 0)
-            i1_padded = torch.unsqueeze(pick(i1_padded), 0)
+            i0_padded = i0_padded[1:2]
+            i1_padded = i1_padded[1:2]
             duo = torch.cat([i0_padded, i1_padded], dim=0)
             duo = torch.unsqueeze(duo, 0)
             output = self.model(duo)
-            out = output[0] + torch.unsqueeze(pick(i1_normed), 0)
-            residue = out - torch.unsqueeze(pick(label_normed), 0)
+            out = output[0] + pick(i1_normed)
+            residue = out - pick(label_normed)
 
         # Visualize and add to summary
         output = output[0]
