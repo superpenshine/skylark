@@ -77,12 +77,12 @@ class network(object):
             self.valid_required = True
             self.data_dir = str(config.h5_dir_win)
             self.batch_size = 1
-            self.epochs = 1000
+            self.epochs = 15000
             self.min_step_diff = 74
             self.num_workers = 0
             self.report_freq = 1
             self.checkpoint_freq = 1
-            self.lr = 0.0001
+            self.lr = 0.000001
 
         # Inferenced parameter
         self.tr_data_dir = Path(self.data_dir + "_tr.h5")
@@ -183,7 +183,7 @@ class network(object):
         # self.model = UNet().to(self.device)
         # self.model = UNet2().to(self.device)
         self.optimizer = optim.Adam(self.model.parameters(), lr=self.lr)
-        # self.scheduler = optim.lr_scheduler.MultiStepLR(self.optimizer, milestones=[1, 10], gamma=0.5)
+        # self.scheduler = optim.lr_scheduler.MultiStepLR(self.optimizer, milestones=[400], gamma=0.5)
         self.criterion = MSELoss().to(self.device) # set reduction=sum, or too smal to see
         # self.criterion = L1Loss().to(self.device)
 
@@ -199,16 +199,13 @@ class network(object):
         n_batch = 0
         start = time.time()
         for b_id, (i0, i1, label) in enumerate(self.train_loader):
-            i0 = i0[:,1:2]
-            i1 = i1[:,1:2]
-            label = label[:,1:2]
             label, _i0, _i1 = label.to(self.device, non_blocking = self.non_blocking), i0.to(self.device, non_blocking = self.non_blocking), i1.to(self.device, non_blocking = self.non_blocking)
             i1_crop = _i1[:,:,self.ltl[0]:self.lbr[0],self.ltl[1]:self.lbr[1]] 
             duo = torch.cat([_i0, _i1], dim=1)
             self.optimizer.zero_grad()
-            duo = torch.reshape(duo, (self.batch_size, 2*self.crop_size[0], 1, -1))
+            duo = torch.reshape(duo, (self.batch_size, 8*self.crop_size[0], 1, -1))
             output = self.model(duo)
-            output = torch.reshape(output, (self.batch_size, 1, self.label_size[0], -1))
+            output = torch.reshape(output, (self.batch_size, 4, self.label_size[0], -1))
             loss = self.criterion(output + i1_crop, label)
             loss.backward()
             self.optimizer.step()
@@ -216,6 +213,7 @@ class network(object):
             self.step += 1
             n_batch += 1 
             print("step{}, loss: {:.4f}".format(self.step, loss.item()))
+            pdb.set_trace()
 
         print("Time {} sec".format(time.time() - start))
         
@@ -232,17 +230,14 @@ class network(object):
 
         with torch.no_grad():
             for b_id, (i0, i1, label) in enumerate(self.valid_loader):
-                i0 = i0[:,1:2]
-                i1 = i1[:,1:2]
-                label = label[:,1:2]
                 label, _i0, _i1 = label.to(self.device, non_blocking = self.non_blocking), i0.to(self.device, non_blocking = self.non_blocking), i1.to(self.device, non_blocking = self.non_blocking)
                 # Only cut i1 for err calc
                 i1_crop = _i1[:,:,self.ltl[0]:self.lbr[0],self.ltl[1]:self.lbr[1]]
                 # Concatenate two input imgs in NCHW format
                 duo = torch.cat([_i0, _i1], dim=1)
-                duo = torch.reshape(duo, (self.batch_size, 2*self.crop_size[0], 1, -1))
+                duo = torch.reshape(duo, (self.batch_size, 8*self.crop_size[0], 1, -1))
                 output = self.model(duo)
-                output = torch.reshape(output, (self.batch_size, 1, self.label_size[0], -1))
+                output = torch.reshape(output, (self.batch_size, 4, self.label_size[0], -1))
                 # MSE Loss
                 loss = self.criterion(output + i1_crop, label)
                 valid_loss += loss.item()
@@ -358,7 +353,7 @@ class network(object):
         # print("Checkpoint removed upon training complete")
 
 
-    def test_single(self, triplet_id = None, step_diff = None, audience = 'normal', dataset = 'va'):
+    def test_single(self, triplet_id=None, step_diff=None, audience='normal', dataset='va', var=1):
         '''
         Visualize using trained model
         triplet_id: triplet index to use, default will be random
@@ -366,7 +361,6 @@ class network(object):
         audience: 'normal' or 'pipeline' for different visualization arrangement
         '''
         var = 1
-        n_row = 5
         pick = chan(var)
         if step_diff:
             self.min_step_diff = step_diff[0]
@@ -444,46 +438,39 @@ class network(object):
         # Run the network with input
         self.model.eval()
         with torch.no_grad():
-            i0_padded = i0_padded[var:var+1]
-            i1_padded = i1_padded[var:var+1]
             duo = torch.cat([i0_padded, i1_padded], dim=0)
-            duo = torch.unsqueeze(duo, 0)
-            duo = torch.reshape(duo, (self.batch_size, 2*self.crop_size[0], 1, -1))
+            duo = torch.reshape(duo, (1, 8*self.crop_size[0], 1, -1))
             output = self.model(duo)
-            output = torch.reshape(output, (self.batch_size, 1, self.label_size[0], -1))
-            out = output[0] + pick(i1_normed)
-            residue = out - pick(label_normed)
+            output = torch.reshape(output, (1, 4, self.label_size[0], -1))
+            out = output[0] + i1_normed
+            residue = out - label_normed
 
         # Visualize and add to summary
-        output = output[0]
-        out_unormed = out * std[var] + mean[var]
+        mean, std = mean[var], std[var]
+        out_unormed = pick(out) * std + mean
         residue_unormed = np.array(out_unormed) - pick(label)
-        original_diff = i0 - label
-        original_diff = pick(original_diff)
-        i0 = pick(i0)
-        i1 = pick(i1)
-        label = pick(label)
+        original_diff = pick(i0 - label)
         # plt.figure(figsize=(20, 4), dpi=200) # default dpi 6.4, 4.8
         if audience == 'normal':
             plt.subplot(251)
             plt.title('i0')
-            plt.imshow(i0)
+            plt.imshow(pick(i0))
             plt.colorbar()
             plt.subplot(252)
             plt.title('i1')
-            plt.imshow(i1)
+            plt.imshow(pick(i1))
             plt.colorbar()
             plt.subplot(253)
             plt.title('GT')
-            plt.imshow(label) 
+            plt.imshow(pick(label)) 
             plt.colorbar() 
             plt.subplot(254)
             plt.title('Out')
-            plt.imshow(out_unormed[0])
+            plt.imshow(out_unormed)
             plt.colorbar()
             plt.subplot(255)
             plt.title('Residue')
-            plt.imshow(residue_unormed[0], vmax=0.001, vmin=-0.001)
+            plt.imshow(residue_unormed)
             plt.colorbar()
             # Second row
             plt.subplot(256)
@@ -500,37 +487,37 @@ class network(object):
             plt.colorbar()
             plt.subplot(259)
             plt.title('Out_normed')
-            plt.imshow(out[0])
+            plt.imshow(pick(out))
             plt.colorbar()
             plt.subplot(2, 5, 10)
             plt.title('Residue_normed')
-            plt.imshow(residue[0])
+            plt.imshow(pick(residue))
             plt.colorbar()
         elif audience == 'pipeline':
             plt.subplot(131)
             plt.title('i0_padded')
-            plt.imshow(i0_padded[0])
+            plt.imshow(pick(i0_padded))
             plt.colorbar()
             plt.subplot(132)
             plt.title('i1_padded')
-            plt.imshow(i1_padded[0])
+            plt.imshow(pick(i1_padded))
             plt.colorbar()
             plt.subplot(133)
             plt.title('Network_immediate_output')
-            plt.imshow(output[0])
+            plt.imshow(pick(output[0]))
             plt.colorbar()
         else:
             raise ValueError("Unknown audience")
 
         # self.writer.add_images('triplet', np.expand_dims(np.stack([i0[:,:,var], label[:,:,var], i1[:,:,var]]), 3), dataformats='NHWC')
-        self.writer.add_image('img4_i0padded', pad(i0), dataformats='HW')
-        self.writer.add_image('img5_i1padded', pad(i1), dataformats='HW')
-        self.writer.add_image('img2_label', label, dataformats='HW')
-        self.writer.add_image('img7_network_output', output + torch.min(output), dataformats='CHW')
-        self.writer.add_image('img6_residue', residue_unormed + np.amin(residue_unormed), dataformats='CHW')
-        self.writer.add_image('img3_synthetic', out_unormed + torch.min(out_unormed), dataformats='CHW')
-        self.writer.add_image('img0_resized_i0', i0, dataformats='HW')
-        self.writer.add_image('img1_resized_i1', i1, dataformats='HW')
+        self.writer.add_image('img4_i0padded', pad(pick(i0)), dataformats='HW')
+        self.writer.add_image('img5_i1padded', pad(pick(i1)), dataformats='HW')
+        self.writer.add_image('img2_label', pick(label), dataformats='HW')
+        self.writer.add_image('img7_network_output', pick(output[0]) + torch.min(pick(output[0])), dataformats='HW')
+        self.writer.add_image('img6_residue', residue_unormed + np.amin(residue_unormed), dataformats='HW')
+        self.writer.add_image('img3_synthetic', out_unormed + torch.min(out_unormed), dataformats='HW')
+        self.writer.add_image('img0_resized_i0', pick(i0), dataformats='HW')
+        self.writer.add_image('img1_resized_i1', pick(i1), dataformats='HW')
         self.writer.close()
         
         # plt.savefig("a.png")
@@ -539,7 +526,7 @@ class network(object):
         print("Image_t0_idx: {}, Image_t1_idx: {}, label_idx: {}".format(info_dict["img1_idx"], info_dict["img2_idx"], info_dict["label_idx"]))
         print("Residue sum: ", np.sum(np.abs(residue_unormed)))
         print("Original diff: ", np.sum(np.abs(original_diff)))
-        print("PSNR: ", psnr(label, (np.asarray(out_unormed) + 0.5), 1))
+        print("PSNR: ", psnr(pick(label), (np.asarray(out_unormed) + 0.5), 1))
         plt.show()
 
 
