@@ -77,7 +77,7 @@ class network(object):
             self.valid_required = True
             self.data_dir = str(config.h5_dir_win)
             self.batch_size = 1
-            self.epochs = 3000
+            self.epochs = 1000
             self.min_step_diff = 74
             self.num_workers = 0
             self.report_freq = 1
@@ -338,8 +338,12 @@ class network(object):
                     valid_result = self.valid()
                     self.writer.add_scalar('Valid/Loss', valid_result, self.step)
                     print("Validation loss: {:.4f}".format(valid_result))
-                self.model.train()
                 self.writer.add_scalar('Train/Loss', train_result, self.step)
+                self.model.train()
+            if epoch % 10:
+                for name, param in self.model.named_parameters():
+                    if 'gn' not in name:
+                        self.writer.add_histogram(name, param, epoch)
             self.writer._get_file_writer().flush()
             if epoch % self.checkpoint_freq == 0:
                 self.save_checkpoint(accuracy, epoch)
@@ -479,7 +483,7 @@ class network(object):
             plt.colorbar()
             plt.subplot(255)
             plt.title('Residue')
-            plt.imshow(residue_unormed[0])
+            plt.imshow(residue_unormed[0], vmax=0.001, vmin=-0.001)
             plt.colorbar()
             # Second row
             plt.subplot(256)
