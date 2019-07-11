@@ -77,12 +77,12 @@ class network(object):
             self.valid_required = True
             self.data_dir = str(config.h5_dir_win)
             self.batch_size = 1
-            self.epochs = 15000
-            self.min_step_diff = 74
+            self.epochs = 60000
+            self.min_step_diff = None
             self.num_workers = 0
             self.report_freq = 1
             self.checkpoint_freq = 1
-            self.lr = 0.000001
+            self.lr = 0.0000001
 
         # Inferenced parameter
         self.tr_data_dir = Path(self.data_dir + "_tr.h5")
@@ -213,7 +213,6 @@ class network(object):
             self.step += 1
             n_batch += 1 
             print("step{}, loss: {:.4f}".format(self.step, loss.item()))
-            pdb.set_trace()
 
         print("Time {} sec".format(time.time() - start))
         
@@ -360,7 +359,6 @@ class network(object):
         step_diff: a tuple of (min_step_diff, max_step_diff)
         audience: 'normal' or 'pipeline' for different visualization arrangement
         '''
-        var = 1
         pick = chan(var)
         if step_diff:
             self.min_step_diff = step_diff[0]
