@@ -41,15 +41,15 @@ sys_arg.add_argument("--h5_dir_win", type=Path,
 sys_arg.add_argument("--h5_dir_linux", type=Path,
                     # default='/home/sht/data/sigma_data/data_polar', 
                     # default='/home/sht/data/sigma_data/data_logpolar', 
-                    # default='/home/sht/data/sigma_data/data_logpolar_resized32',
-                    default='/home/hshen/data/sigma_data/data_logpolar_resized32', # for kingwood only
+                    default='/home/sht/data/sigma_data/data_logpolar_resized32',
+                    # default='/home/hshen/data/sigma_data/data_logpolar_resized32', # for kingwood only
                     # default='/home/sht/data/sigma_data/data_logpolar_resized100',
                     # default='/home/sht/data/sigma_data/data_logpolar_resized196', 
                     # default='/home/sht/data/sigma_data/data_logpolar_resized512', 
                     help="Linux data file without the .h5 suffix")
 
 sys_arg.add_argument("--min_step_diff", type=int,
-                    default=74,
+                    default=None,
                     help="None or an integer indicating min step difference")
 
 sys_arg.add_argument("--max_step_diff", type=int,
