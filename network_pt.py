@@ -203,9 +203,9 @@ class network(object):
             i1_crop = _i1[:,:,self.ltl[0]:self.lbr[0],self.ltl[1]:self.lbr[1]] 
             duo = torch.cat([_i0, _i1], dim=1)
             self.optimizer.zero_grad()
-            duo = torch.reshape(duo, (self.batch_size, 8*self.crop_size[0], 1, -1))
+            duo = torch.reshape(duo, (label.shape[0], 8*self.crop_size[0], 1, -1))
             output = self.model(duo)
-            output = torch.reshape(output, (self.batch_size, 4, self.label_size[0], -1))
+            output = torch.reshape(output, (label.shape[0], 4, self.label_size[0], -1))
             loss = self.criterion(output + i1_crop, label)
             loss.backward()
             self.optimizer.step()
@@ -234,9 +234,9 @@ class network(object):
                 i1_crop = _i1[:,:,self.ltl[0]:self.lbr[0],self.ltl[1]:self.lbr[1]]
                 # Concatenate two input imgs in NCHW format
                 duo = torch.cat([_i0, _i1], dim=1)
-                duo = torch.reshape(duo, (self.batch_size, 8*self.crop_size[0], 1, -1))
+                duo = torch.reshape(duo, (label.shape[0], 8*self.crop_size[0], 1, -1))
                 output = self.model(duo)
-                output = torch.reshape(output, (self.batch_size, 4, self.label_size[0], -1))
+                output = torch.reshape(output, (label.shape[0], 4, self.label_size[0], -1))
                 # MSE Loss
                 loss = self.criterion(output + i1_crop, label)
                 valid_loss += loss.item()
