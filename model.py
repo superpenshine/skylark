@@ -17,8 +17,8 @@ def ConvBlock(fan_in, fan_out, stride=1, bias=False):
     '''
     3x3 convolution with padding
     '''
-    return nn.Conv2d(fan_in, fan_out, kernel_size=3, stride=stride, bias=bias)
-    # return nn.Conv2d(fan_in, fan_out, kernel_size=(1, 3), stride=stride, bias=bias)
+    # return nn.Conv2d(fan_in, fan_out, kernel_size=3, stride=stride, bias=bias)
+    return nn.Conv2d(fan_in, fan_out, kernel_size=(1, 3), stride=stride, bias=bias)
 
 
 class ResUnit(nn.Module):
@@ -63,7 +63,7 @@ class ResNet(nn.Module):
     '''
     def __init__(self):
         super(ResNet, self).__init__()
-        self.fan_in = 64
+        self.fan_in = 512
         # self.conv1 = ConvBlock(2, 64, bias=True)
         self.conv1 = ConvBlock(2*4*32, 512, bias=True)
         self.layer1 = self._make_layer(ResUnit, 512, 1)
