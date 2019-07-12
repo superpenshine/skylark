@@ -61,7 +61,7 @@ sys_arg.add_argument("--batch_size", type=int,
                     help="Batch size")
 
 sys_arg.add_argument("--lr", type=float,
-                    default=0.000001,
+                    default=0.0000001,
                     help="Learning rate")
 
 sys_arg.add_argument("--epochs", type=int,
@@ -116,7 +116,7 @@ sys_arg.add_argument("--label_size", type=tuple,
                     help="Label image size, this is related to network model")
 
 sys_arg.add_argument("--checkpoint_freq", type=int, 
-                    default=20, 
+                    default=1, 
                     help="Number of epochs between each checkpoint")
 
 sys_arg.add_argument("--report_freq", type=int, 
