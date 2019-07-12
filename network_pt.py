@@ -334,7 +334,7 @@ class network(object):
                     print("Validation loss: {:.4f}".format(valid_result))
                 self.writer.add_scalar('Train/Loss', train_result, self.step)
                 self.model.train()
-            # if epoch % 10:
+            # if epoch % 10 == 0:
             #     for name, param in self.model.named_parameters():
             #         if 'gn' not in name:
             #             self.writer.add_histogram(name, param, epoch)
