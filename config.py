@@ -18,36 +18,6 @@ def add_argument_group(name):
 
 sys_arg = add_argument_group("Data")
 
-# Params you want to change for local system uses
-sys_arg.add_argument("-m", type=str,
-                    default=None,
-                    help='''Running mode, 
-                    v: for visulization
-                    s: for save to h5py
-                    p: for preview''')
-
-sys_arg.add_argument("--data_dir", type=Path,
-                    # default='D:/sigma_data',
-                    default='/home/sht/data/sigma_data',
-                    help="Directory to data folder")
-
-sys_arg.add_argument("--h5_dir_win", type=Path,
-                    # default='D:/sigma_data/data_polar',
-                    # default='D:/sigma_data/data_logpolar',
-                    default='D:/sigma_data/data_logpolar_resized32',
-                    # default='D:/sigma_data/data_logpolar_resized100',
-                    help="Win data file without the .h5 suffix")
-
-sys_arg.add_argument("--h5_dir_linux", type=Path,
-                    # default='/home/sht/data/sigma_data/data_polar', 
-                    # default='/home/sht/data/sigma_data/data_logpolar', 
-                    default='/home/sht/data/sigma_data/data_logpolar_resized32',
-                    # default='/home/hshen/data/sigma_data/data_logpolar_resized32', # for kingwood only
-                    # default='/home/sht/data/sigma_data/data_logpolar_resized100',
-                    # default='/home/sht/data/sigma_data/data_logpolar_resized196', 
-                    # default='/home/sht/data/sigma_data/data_logpolar_resized512', 
-                    help="Linux data file without the .h5 suffix")
-
 sys_arg.add_argument("--min_step_diff", type=int,
                     default=None,
                     help="None or an integer indicating min step difference")
@@ -71,26 +41,6 @@ sys_arg.add_argument("--epochs", type=int,
 sys_arg.add_argument("--num_workers", type=int,
                     default=8,
                     help="Number of dataloader workers")
-
-sys_arg.add_argument("--f_gird", type=Path,
-                    default='log_grid.dat',
-                    help="log grid file name")
-
-sys_arg.add_argument("--log_dir", type=Path,
-                    default='./tmp',
-                    help="Directory to where TF store logs")
-
-sys_arg.add_argument("--pattern", type=str,
-                    default='sigma_data*.bin',
-                    help="Data file pattern")
-
-sys_arg.add_argument("--nvar", type=int,
-                    default=4,
-                    help="nvar number")
-
-sys_arg.add_argument("--valid_size", type=float,
-                    default=0.5,
-                    help="Validation sample percentage (<=1.0)")
 
 sys_arg.add_argument("--input_size", type=tuple, 
                     # default=(512, 512), # resized to half
@@ -126,6 +76,55 @@ sys_arg.add_argument("--report_freq", type=int,
 sys_arg.add_argument("--cuda", type=bool, 
                     default=is_available(), 
                     help="Cuda enabled or use cpu")
+
+sys_arg.add_argument("-m", type=str,
+                    default=None,
+                    help='''Running mode, 
+                    v: for visulization
+                    s: for save to h5py
+                    p: for preview''')
+
+sys_arg.add_argument("--data_dir", type=Path,
+                    # default='D:/sigma_data',
+                    default='/home/sht/data/sigma_data',
+                    help="Directory to data folder")
+
+sys_arg.add_argument("--h5_dir_win", type=Path,
+                    # default='D:/sigma_data/data_polar',
+                    # default='D:/sigma_data/data_logpolar',
+                    default='D:/sigma_data/data_logpolar_resized32',
+                    # default='D:/sigma_data/data_logpolar_resized100',
+                    help="Win data file without the .h5 suffix")
+
+sys_arg.add_argument("--h5_dir_linux", type=Path,
+                    # default='/home/sht/data/sigma_data/data_polar', 
+                    # default='/home/sht/data/sigma_data/data_logpolar', 
+                    default='/home/sht/data/sigma_data/data_logpolar_resized32',
+                    # default='/home/hshen/data/sigma_data/data_logpolar_resized32', # for kingwood only
+                    # default='/home/sht/data/sigma_data/data_logpolar_resized100',
+                    # default='/home/sht/data/sigma_data/data_logpolar_resized196', 
+                    # default='/home/sht/data/sigma_data/data_logpolar_resized512', 
+                    help="Linux data file without the .h5 suffix")
+
+sys_arg.add_argument("--f_gird", type=Path,
+                    default='log_grid.dat',
+                    help="log grid file name")
+
+sys_arg.add_argument("--log_dir", type=Path,
+                    default='./tmp',
+                    help="Directory to where TF store logs")
+
+sys_arg.add_argument("--pattern", type=str,
+                    default='sigma_data*.bin',
+                    help="Data file pattern")
+
+sys_arg.add_argument("--nvar", type=int,
+                    default=4,
+                    help="nvar number")
+
+sys_arg.add_argument("--valid_size", type=float,
+                    default=0.5,
+                    help="Validation sample percentage (<=1.0)")
 
 def get_config():
     config, unparsed = parser.parse_known_args()

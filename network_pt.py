@@ -82,7 +82,7 @@ class network(object):
             self.num_workers = 0
             self.report_freq = 1
             self.checkpoint_freq = 1
-            self.lr = 0.0000001
+            self.lr = 0.000001
 
         # Inferenced parameter
         self.tr_data_dir = Path(self.data_dir + "_tr.h5")
