@@ -123,33 +123,83 @@ class DoubleConv(nn.Module):
         return x
 
 
+# def UpConv(fan_in, fan_out, stride=2):
+#     return nn.ConvTranspose2d(fan_in, fan_out, 2, stride=stride)
+
+
+# def MaxPool(stride=2):
+#     return nn.MaxPool2d(2, stride=stride)
+
+
+# class UNet2(nn.Module):
+#     '''
+#     UNet
+#     '''
+#     def __init__(self):
+#         super(UNet2, self).__init__()
+#         self.fan_in = 8
+#         self.d_layer1 = self._make_layer(DoubleConv, 256)
+#         self.d_layer2 = self._make_layer(DoubleConv, 512)
+#         self.pool1 = MaxPool()
+#         self.pool2 = MaxPool()
+
+#         self.bot_layer = self._make_layer(DoubleConv, 1024)
+
+#         self.upconv1 = self._make_layer(UpConv, 512)
+#         self.u_layer1 = self._make_layer(DoubleConv, 512, cat=512)
+#         self.upconv2 = self._make_layer(UpConv, 256)
+#         self.u_layer2 = self._make_layer(DoubleConv, 256, cat=256)
+
+#         self.out = nn.Conv2d(256, 4, kernel_size=1, stride=1, bias=True)
+
+
+#     def _make_layer(self, block, fan_out, cat=0):
+#         '''
+#         Construct layers
+#         cat: Concatenate residual flow
+#         '''
+#         if cat != 0:
+#             self.fan_in += cat
+#         layer = block(self.fan_in, fan_out)
+#         self.fan_in = fan_out
+
+#         return layer
+
+
+#     def forward(self, x):
+#         x = self.d_layer1(x)
+#         residual1 = x
+
+#         x = self.pool1(x)
+#         x = self.d_layer2(x) 
+#         residual2 = x
+
+#         x = self.pool2(x)
+
+#         x = self.bot_layer(x)
+
+#         x = self.upconv1(x)
+#         tl, br = crop_position(residual2.size(), x.size())
+#         residual2 = residual2[:,:,tl[0]:br[0],tl[1]:br[1]]
+#         x = torch.cat((x, residual2[:,:,:x.size()[2],:x.size()[3]]), 1)
+#         x = self.u_layer1(x)
+
+#         x = self.upconv2(x)
+#         tl, br = crop_position(residual1.size(), x.size())
+#         residual1 = residual1[:,:,tl[0]:br[0],tl[1]:br[1]]
+#         x = torch.cat((x, residual1[:,:,:x.size()[2],:x.size()[3]]), 1)
+#         x = self.u_layer2(x)
+
+#         x = self.out(x)
+#         return x
+
+
 def UpConv(fan_in, fan_out, stride=2):
-    return nn.ConvTranspose2d(fan_in, fan_out, 2, stride=stride)
+    return nn.ConvTranspose2d(fan_in, fan_out, (1, 2), stride=stride)
 
 
 def MaxPool(stride=2):
-    return nn.MaxPool2d(2, stride=stride)
-
-
-# class UpBlock(nn.Module):
-#     '''
-#     Construct 2 conv blocks and 1 downsample
-#     '''
-#     def __init__(self, fan_in, fan_out):
-#         super(UpBlock, self).__init__()
-#         self.upconv = nn.ConvTranspose2d(fan_in, fan_out, 2, stride=2)
-#         self.conv1 = ConvBlock(fan_in, fan_out)
-#         self.conv2 = ConvBlock(fan_out, fan_out)
-#         self.relu = nn.ReLU(inplace=True)
-
-#     def forward(self, x):
-#         x = self.upconv(x)
-#         x = self.conv1(x)
-#         x = self.relu(x)
-#         x = self.conv2(x)
-#         x = self.relu(x)
-
-#         return x
+    return nn.MaxPool2d((1, 2), stride=stride)
 
 
 class UNet2(nn.Module):
@@ -158,7 +208,7 @@ class UNet2(nn.Module):
     '''
     def __init__(self):
         super(UNet2, self).__init__()
-        self.fan_in = 8
+        self.fan_in = 256
         self.d_layer1 = self._make_layer(DoubleConv, 256)
         self.d_layer2 = self._make_layer(DoubleConv, 512)
         self.pool1 = MaxPool()
@@ -171,7 +221,7 @@ class UNet2(nn.Module):
         self.upconv2 = self._make_layer(UpConv, 256)
         self.u_layer2 = self._make_layer(DoubleConv, 256, cat=256)
 
-        self.out = nn.Conv2d(256, 4, kernel_size=1, stride=1, bias=True)
+        self.out = nn.Conv2d(256, 1*4*32, kernel_size=1, stride=1, bias=True)
 
 
     def _make_layer(self, block, fan_out, cat=0):
@@ -189,6 +239,8 @@ class UNet2(nn.Module):
 
     def forward(self, x):
         x = self.d_layer1(x)
+        # import pdb
+        # pdb.set_trace()
         residual1 = x
 
         x = self.pool1(x)
