@@ -31,7 +31,7 @@ sys_arg.add_argument("--batch_size", type=int,
                     help="Batch size")
 
 sys_arg.add_argument("--lr", type=float,
-                    default=0.000001,
+                    default=0.0000001,
                     help="Learning rate")
 
 sys_arg.add_argument("--epochs", type=int,
@@ -51,8 +51,8 @@ sys_arg.add_argument("--input_size", type=tuple,
 sys_arg.add_argument("--crop_size", type=tuple,
                     # default=(80, 80), 
                     # default=(284, 284), # UNet4, label_size + 184
-                    default=(32, 72), # UNet2
-                    # default=(32, 52),  # without randcrop
+                    # default=(32, 72), # UNet2
+                    default=(32, 64),  # without randcrop
                     # default=(32, 32), # with randcrop, ou2tput size will be smaller
                     # default=(24, 24), # evenn smaller patch
                     help='''Ramdom crop image size, tiling size.''')
