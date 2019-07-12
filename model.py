@@ -63,13 +63,22 @@ class ResNet(nn.Module):
     '''
     def __init__(self):
         super(ResNet, self).__init__()
-        self.fan_in = 64
+        self.fan_in = 512
         # self.conv1 = ConvBlock(2, 64, bias=True)
+<<<<<<< Updated upstream
         self.conv1 = ConvBlock(2*4, 64, bias=True)
         self.layer1 = self._make_layer(ResUnit, 128, 1)
         self.layer2 = self._make_layer(ResUnit, 256, 1)
         self.layer3 = self._make_layer(ResUnit, 512, 1)
         self.out_conv = ConvBlock(512, 1*4, bias=True)
+=======
+        self.conv1 = ConvBlock(2*4*32, 512, bias=True)
+        self.layer1 = self._make_layer(ResUnit, 512, 1)
+        self.layer2 = self._make_layer(ResUnit, 512, 1)
+        self.layer3 = self._make_layer(ResUnit, 512, 1)
+        self.layer4 = self._make_layer(ResUnit, 512, 1)
+        self.out_conv = ConvBlock(512, 1*4*32, bias=True)
+>>>>>>> Stashed changes
 
 
     def _make_layer(self, block, fan_out, blocks, stride=1, **kwargs):
@@ -97,6 +106,7 @@ class ResNet(nn.Module):
         x = self.layer1(x)
         x = self.layer2(x)
         x = self.layer3(x)
+        x = self.layer4(x)
         x = self.out_conv(x)
 
         return x
