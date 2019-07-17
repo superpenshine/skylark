@@ -187,7 +187,7 @@ class network(object):
         self.criterion = MSELoss().to(self.device) # set reduction=sum, or too smal to see
         # self.criterion = L1Loss().to(self.device)
 
-
+    # 2d conv version
     def train(self):
         '''
         Train the model
