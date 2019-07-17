@@ -70,7 +70,7 @@ sys_arg.add_argument("--checkpoint_freq", type=int,
                     help="Number of epochs between each checkpoint")
 
 sys_arg.add_argument("--report_freq", type=int, 
-                    default=1, 
+                    default=5, 
                     help="Number of epochs between each summary write")
 
 sys_arg.add_argument("--cuda", type=bool, 
