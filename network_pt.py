@@ -77,8 +77,8 @@ class network(object):
             self.valid_required = True
             self.data_dir = str(config.h5_dir_win)
             self.batch_size = 1
-            self.epochs = 60000
-            self.min_step_diff = None
+            self.epochs = 1
+            self.min_step_diff = 72
             self.num_workers = 0
             self.report_freq = 1
             self.checkpoint_freq = 1
@@ -121,7 +121,7 @@ class network(object):
                  # Resize((self.input_size)), # Done in .5py
                  # LogPolartoPolar(), # Use polar data instead, too expensive
                  CustomPad((math.ceil((self.crop_size[1] - self.label_size[1])/2), 0, math.ceil((self.crop_size[1] - self.label_size[1])/2), 0), 'circular'), 
-                 # CustomPad((0, math.ceil((self.crop_size[0] - self.label_size[0])/2), 0, math.ceil((self.crop_size[0] - self.label_size[0])/2)), 'edge'), 
+                 CustomPad((0, math.ceil((self.crop_size[0] - self.label_size[0])/2), 0, math.ceil((self.crop_size[0] - self.label_size[0])/2)), 'edge'), 
                  GroupRandomCrop(self.crop_size, label_size=self.label_size), 
                  Normalize(mean, std),
                  ToTensor()
@@ -203,14 +203,12 @@ class network(object):
             i1_crop = _i1[:,:,self.ltl[0]:self.lbr[0],self.ltl[1]:self.lbr[1]] 
             duo = torch.cat([_i0, _i1], dim=1)
             self.optimizer.zero_grad()
-            duo = torch.reshape(duo, (label.shape[0], 8*self.crop_size[0], 1, -1))
             output = self.model(duo)
-            output = torch.reshape(output, (label.shape[0], 4, self.label_size[0], -1))
-            # loss = self.criterion(output + i1_crop, label)
+            loss = self.criterion(output + i1_crop, label)
 
             # Loss = mean(MSE(I, I_gt)) + alpha * (mean(MSE(dI_x, dI_xgt)) + mean(MSE(dI_y, dI_ygt)))
-            output = output + i1_crop
-            loss = self.criterion(output, label) + 0.1 * (self.criterion(output[:,:,1:] - output[:,:,:-1], label[:,:,1:] - label[:,:,:-1]) + self.criterion(output[:,:,:,1:] - output[:,:,:,:-1], label[:,:,:,1:] - label[:,:,:,:-1]))
+            # output = output + i1_crop
+            # loss = self.criterion(output, label) + 0.1 * (self.criterion(output[:,:,1:] - output[:,:,:-1], label[:,:,1:] - label[:,:,:-1]) + self.criterion(output[:,:,:,1:] - output[:,:,:,:-1], label[:,:,:,1:] - label[:,:,:,:-1]))
 
             loss.backward()
             self.optimizer.step()
@@ -239,12 +237,10 @@ class network(object):
                 i1_crop = _i1[:,:,self.ltl[0]:self.lbr[0],self.ltl[1]:self.lbr[1]]
                 # Concatenate two input imgs in NCHW format
                 duo = torch.cat([_i0, _i1], dim=1)
-                duo = torch.reshape(duo, (label.shape[0], 8*self.crop_size[0], 1, -1))
                 output = self.model(duo)
-                output = torch.reshape(output, (label.shape[0], 4, self.label_size[0], -1))
-                # loss = self.criterion(output + i1_crop, label)\
-                output = output + i1_crop
-                loss = self.criterion(output, label) + 0.1 * (self.criterion(output[:,:,1:] - output[:,:,:-1], label[:,:,1:] - label[:,:,:-1]) + self.criterion(output[:,:,:,1:] - output[:,:,:,:-1], label[:,:,:,1:] - label[:,:,:,:-1]))
+                loss = self.criterion(output + i1_crop, label)
+                # output = output + i1_crop
+                # loss = self.criterion(output, label) + 0.1 * (self.criterion(output[:,:,1:] - output[:,:,:-1], label[:,:,1:] - label[:,:,:-1]) + self.criterion(output[:,:,:,1:] - output[:,:,:,:-1], label[:,:,:,1:] - label[:,:,:,:-1]))
                 
                 valid_loss += loss.item()
                 n_batch += 1
@@ -413,7 +409,8 @@ class network(object):
         i0_normed = norm(np.array(i0))
         i1_normed = norm(np.array(i1))
         label_normed = norm(np.array(label))
-        pad = transforms.Compose([CustomPad((math.ceil((self.crop_size[1] - self.label_size[1])/2), 0, math.ceil((self.crop_size[1] - self.label_size[1])/2), 0), 'circular')])
+        pad = transforms.Compose([CustomPad((math.ceil((self.crop_size[1] - self.label_size[1])/2), 0, math.ceil((self.crop_size[1] - self.label_size[1])/2), 0), 'circular'), 
+            CustomPad((0, math.ceil((self.crop_size[0] - self.label_size[0])/2), 0, math.ceil((self.crop_size[0] - self.label_size[0])/2)), 'edge')])
 
         i0_padded = pad(i0_normed)
         i1_padded = pad(i1_normed)
@@ -444,7 +441,7 @@ class network(object):
         self.model.eval()
         with torch.no_grad():
             duo = torch.cat([i0_padded, i1_padded], dim=0)
-            duo = torch.reshape(duo, (1, 8*self.crop_size[0], 1, -1))
+            duo = torch.unsqueeze(duo, 0)
             output = self.model(duo)
             output = torch.reshape(output, (1, 4, self.label_size[0], -1))
             out = output[0] + i1_normed
