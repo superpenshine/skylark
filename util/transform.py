@@ -14,7 +14,7 @@ np_pad_name = {'zero':'constant',
 
 class CustomPad(object):
     """
-    Circular Pad Image
+    Pad image with given mode
     input:
         pad: int or 4-elements tuple
         img: PIL image or ndarray
