@@ -18,7 +18,7 @@ def ConvBlock(fan_in, fan_out, stride=1, bias=False):
     3x3 convolution with padding
     '''
     # return nn.Conv2d(fan_in, fan_out, kernel_size=3, stride=stride, bias=bias)
-    return nn.Conv2d(fan_in, fan_out, kernel_size=(1, 3), stride=stride, bias=bias)
+    return nn.Conv2d(fan_in, fan_out, kernel_size=(1, 5), stride=stride, bias=bias)
 
 
 class ResUnit(nn.Module):

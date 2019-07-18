@@ -77,8 +77,8 @@ class network(object):
             self.valid_required = True
             self.data_dir = str(config.h5_dir_win)
             self.batch_size = 1
-            self.epochs = 60000
-            self.min_step_diff = None
+            self.epochs = 1
+            self.min_step_diff = 72
             self.num_workers = 0
             self.report_freq = 1
             self.checkpoint_freq = 1
