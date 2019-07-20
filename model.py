@@ -69,10 +69,6 @@ class ResNet(nn.Module):
         self.layer1 = self._make_layer(ResUnit, 512, 1)
         self.layer2 = self._make_layer(ResUnit, 512, 1)
         self.layer3 = self._make_layer(ResUnit, 512, 1)
-        self.layer4 = self._make_layer(ResUnit, 512, 1)
-        self.layer5 = self._make_layer(ResUnit, 512, 1)
-        self.layer6 = self._make_layer(ResUnit, 512, 1)
-        self.layer7 = self._make_layer(ResUnit, 512, 1)
         self.out_conv = ConvBlock(512, 1*4*32, bias=True)
 
 
@@ -101,10 +97,6 @@ class ResNet(nn.Module):
         x = self.layer1(x)
         x = self.layer2(x)
         x = self.layer3(x)
-        x = self.layer4(x)
-        x = self.layer5(x)
-        x = self.layer6(x)
-        x = self.layer7(x)
         x = self.out_conv(x)
 
         return x
