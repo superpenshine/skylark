@@ -39,8 +39,15 @@ def main():
     elif config.m == 'stats':
         get_stats(str(config.h5_dir_win) + "_tr.h5", str(config.h5_dir_win) + "_va.h5", config.nvar, verbose=True)
     elif config.m == 'p':
-        data, grid = load(str(config.h5_dir_win) + "_tr.h5", "sigma_data", 60)
-        preview(data, grid, polar=False)
+        # Uncomment the line below
+        # data, grid = load(str(config.h5_dir_win) + "_tr.h5", "sigma_data", 60)
+        data, grid = load(str("D:/sigma_data/data_logpolar") + "_tr.h5", "sigma_data", 60)
+        preview(data, grid, polar=True)
+    elif config.m == 'a':
+        make_video()
+    elif config.m == 'frame':
+        # to_frames(str(config.h5_dir_win) + "_tr.h5", d_name='sigma_data', var=1)
+        to_frames('D:/sigma_data/data_logpolar_tr.h5', d_name='sigma_data', var=1)
     elif config.m == 'sanity':
         solver.sanity_check_regular_loss()
         # solver.sanity_check_randcrop_interpo_loss()

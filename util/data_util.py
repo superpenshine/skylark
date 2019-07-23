@@ -1,6 +1,7 @@
 # Simulation data loader
 
 import os
+import cv2
 import pdb
 import h5py
 import platform
@@ -187,15 +188,30 @@ def preview(data, log_grid, polar = False, var = 1):
           3 -- dust for size 0.001cm
 
     '''
-    # fig = plt.figure()
-    # plt.subplot(111, polar=polar)
     nx, ny = data.shape[:2]
     theta = (np.arange(0, ny) * 1.0 / ny + 0.5 / ny) * 2 * np.pi
 
-    plt.imshow(data[:,:,var])
+    # Show img in log-polar
+
+    # Show img in polar
+    if polar:
+        phi = (np.arange(0,ny)*1.0/ny + 0.5/ny)*2*np.pi
+        # vertical orbit
+        rp1, rp2 = np.meshgrid(log_grid, phi)
+        plt.pcolormesh(rp1, rp2, data[:,:,var].T)
+        # horizontal orbit
+        # rp1, rp2 = np.meshgrid(phi, log_grid)
+        # plt.pcolormesh(rp1, rp2, data[:,:,var])
+    else:
+        plt.imshow(data[:,:,var])
+
+    plt.colorbar()
+    plt.show()
+
+    # plt.imshow(data[:,:,var])
     # print(np.sum(np.square(data[:,:,var])))
     # print(np.histogram(data[:,:,0], bins=10, range=(0, 7)))
-    plt.colorbar()
+    # plt.colorbar()
     # # Show in polar coords with mapping
     # rp1, rp2 = np.meshgrid(np.linspace(0, nx, nx), np.digitize(np.linspace(0, ny, ny), expand(log_grid, ny))-1)
     # polar_data = map_coordinates(data[:,:,var], (rp2, rp1))
@@ -288,3 +304,34 @@ def get_stats(h5_dir_tr, h5_dir_va, n_chan, verbose=False):
             print("Channel{} mean: {}, std: {}".format(chan, mean[chan], std[chan]))
 
     return mean, std
+
+
+def make_video():
+    '''
+    Make video out of frames
+    ''' 
+    image_folder = './frames'
+    video_name = 'video.avi'
+
+    images = [img for img in os.listdir(image_folder) if img.endswith(".png")]
+    frame = cv2.imread(os.path.join(image_folder, images[0]))
+    height, width, layers = frame.shape
+    video = cv2.VideoWriter(video_name, 0, 8, (width,height))
+    for i in range(len(images)):
+        video.write(cv2.imread(os.path.join(image_folder, str(i) + '.png')))
+
+    cv2.destroyAllWindows()
+    video.release()
+
+def to_frames(data_dir, d_name='sigma_data', frames_path='./frames/', var = 1):
+    with h5py.File(data_dir, "r") as data:
+        data_d = data[d_name]
+        frame_ids = list(data_d.keys())
+        frame_ids.remove('log_grid')
+
+        if not os.path.exists(frames_path):
+            os.makedirs(frames_path)
+        for frame_id in frame_ids:
+            img = np.array(data_d[frame_id])[:,:,var]
+            plt.imsave(frames_path + frame_id + '.png', img, vmin=np.amin(img), vmax=np.amax(img))
+
