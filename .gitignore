@@ -106,6 +106,8 @@ venv.bak/
 tmp/
 *.pth
 *.tar
+*.avi
 .DS_Store
 .output/
 .done/
+.frames/
