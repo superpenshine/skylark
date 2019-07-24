@@ -535,6 +535,58 @@ class network(object):
         plt.show()
 
 
+    def setup(self):
+        '''
+        Set up network for interpolation or extrapolation
+        '''
+        self.mean, self.std = get_stats(self.tr_data_dir, self.va_data_dir, self.nvar)
+        self.norm = Normalize(mean, std)
+        self.pad = transforms.Compose([CustomPad((math.ceil((self.crop_size[1] - self.label_size[1])/2), 0, math.ceil((self.crop_size[1] - self.label_size[1])/2), 0), 'circular')])
+        self.to_tensor = ToTensor()
+        # Load network to cpu
+        device = torch.device('cpu')
+        if Path(self.model_dir).exists():
+            self.load(map_location=device)
+        elif Path(self.checkpoint).exists():
+            print("Model file does not exists, trying checkpoint")
+            self.model = ResNet().to(device)
+            # self.model = UNet().to(device)
+            # self.model = UNet2().to(device)
+            self.optimizer = optim.Adam(self.model.parameters(), lr=self.lr)
+            self.load_checkpoint()
+        else:
+            print("No model.pth or checkpoint.tar found, exiting.")
+            exit(1)
+
+        self.model.eval()
+
+
+    def inter(self, i0, i1):
+        '''
+        Frame Interpolation
+        i0, i1: 2 ndarray frames
+        return: interpolation result
+        '''
+        self.setup()
+        i0_normed = self.norm(np.array(i0))
+        i1_normed = self.norm(np.array(i1))
+        i0_padded = self.pad(i0_normed)
+        i1_padded = self.pad(i1_normed)
+        i0_padded = self.to_tensor(i0_padded)
+        i1_normed = self.to_tensor(i1_normed)
+        i1_padded = self.to_tensor(i1_padded)
+
+        # Run the network with input
+        with torch.no_grad():
+            duo = torch.cat([i0_padded, i1_padded], dim=0)
+            duo = torch.reshape(duo, (1, 8*self.crop_size[0], 1, -1))
+            output = self.model(duo)
+            output = torch.reshape(output, (1, 4, self.label_size[0], -1))
+            out = output[0] + i1_normed
+
+        pdb.set_trace()
+
+
     def clean_up(self):
         '''
         Clean up the network outputs and summary
