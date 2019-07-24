@@ -363,10 +363,12 @@ class network(object):
         audience: 'normal' or 'pipeline' for different visualization arrangement
         '''
         pick = chan(var)
+
         if step_diff:
             self.min_step_diff = step_diff[0]
             self.max_step_diff = step_diff[1]
 
+        self.setup()
         self.load_writer()
 
         data_tr = Astrodata(self.tr_data_dir, 
@@ -403,42 +405,18 @@ class network(object):
         # i0_sized = resize(i0)
         # i1_sized = resize(i1)
         # label_sized = resize(label)
-
-        mean, std = get_stats(self.tr_data_dir, self.va_data_dir, self.nvar)
-        norm = Normalize(mean, std)
-        i0_normed = norm(np.array(i0))
-        i1_normed = norm(np.array(i1))
-        label_normed = norm(np.array(label))
-        pad = transforms.Compose([CustomPad((math.ceil((self.crop_size[1] - self.label_size[1])/2), 0, math.ceil((self.crop_size[1] - self.label_size[1])/2), 0), 'circular'), 
-            CustomPad((0, math.ceil((self.crop_size[0] - self.label_size[0])/2), 0, math.ceil((self.crop_size[0] - self.label_size[0])/2)), 'edge')])
-
-        i0_padded = pad(i0_normed)
-        i1_padded = pad(i1_normed)
-
-        to_tensor = ToTensor()
-        i0_normed = to_tensor(i0_normed)
-        i0_padded = to_tensor(i0_padded)
-        i1_normed = to_tensor(i1_normed)
-        i1_padded = to_tensor(i1_padded)
-        label_normed = to_tensor(label_normed)
-
-        # Load network to cpu
-        device = torch.device('cpu')
-        if Path(self.model_dir).exists():
-            self.load(map_location=device)
-        elif Path(self.checkpoint).exists():
-            print("Model file does not exists, trying checkpoint")
-            self.model = ResNet().to(device)
-            # self.model = UNet().to(device)
-            # self.model = UNet2().to(device)
-            self.optimizer = optim.Adam(self.model.parameters(), lr=self.lr)
-            self.load_checkpoint()
-        else:
-            print("No model.pth or checkpoint.tar found, exiting.")
-            exit(1)
+        i0_normed = self.norm(np.array(i0))
+        i1_normed = self.norm(np.array(i1))
+        label_normed = self.norm(np.array(label))
+        i0_padded = self.pad(i0_normed)
+        i1_padded = self.pad(i1_normed)
+        i0_normed = self.to_tensor(i0_normed)
+        i0_padded = self.to_tensor(i0_padded)
+        i1_normed = self.to_tensor(i1_normed)
+        i1_padded = self.to_tensor(i1_padded)
+        label_normed = self.to_tensor(label_normed)
 
         # Run the network with input
-        self.model.eval()
         with torch.no_grad():
             duo = torch.cat([i0_padded, i1_padded], dim=0)
             duo = torch.unsqueeze(duo, 0)
@@ -448,7 +426,7 @@ class network(object):
             residue = out - label_normed
 
         # Visualize and add to summary
-        mean, std = mean[var], std[var]
+        mean, std = self.mean[var], self.std[var]
         out_unormed = pick(out) * std + mean
         residue_unormed = np.array(out_unormed) - pick(label)
         original_diff = pick(i0 - label)
@@ -512,8 +490,8 @@ class network(object):
             raise ValueError("Unknown audience")
 
         # self.writer.add_images('triplet', np.expand_dims(np.stack([i0[:,:,var], label[:,:,var], i1[:,:,var]]), 3), dataformats='NHWC')
-        self.writer.add_image('img4_i0padded', pad(pick(i0)), dataformats='HW')
-        self.writer.add_image('img5_i1padded', pad(pick(i1)), dataformats='HW')
+        self.writer.add_image('img4_i0padded', self.pad(pick(i0)), dataformats='HW')
+        self.writer.add_image('img5_i1padded', self.pad(pick(i1)), dataformats='HW')
         self.writer.add_image('img2_label', pick(label), dataformats='HW')
         self.writer.add_image('img7_network_output', pick(output[0]) + torch.min(pick(output[0])), dataformats='HW')
         self.writer.add_image('img6_residue', residue_unormed + np.amin(residue_unormed), dataformats='HW')
@@ -530,6 +508,58 @@ class network(object):
         print("Original diff: ", np.sum(np.abs(original_diff)))
         print("PSNR: ", psnr(pick(label), (np.asarray(out_unormed) + 0.5), 1))
         plt.show()
+
+
+    def setup(self):
+        '''
+        Set up network for interpolation/extrapolation/test_single
+        '''
+        self.mean, self.std = get_stats(self.tr_data_dir, self.va_data_dir, self.nvar)
+        self.norm = Normalize(self.mean, self.std)
+        self.pad = transforms.Compose([CustomPad((math.ceil((self.crop_size[1] - self.label_size[1])/2), 0, math.ceil((self.crop_size[1] - self.label_size[1])/2), 0), 'circular')])
+        self.to_tensor = ToTensor()
+        # Load network to cpu
+        device = torch.device('cpu')
+        if Path(self.model_dir).exists():
+            self.load(map_location=device)
+        elif Path(self.checkpoint).exists():
+            print("Model file does not exists, trying checkpoint")
+            self.model = ResNet().to(device)
+            # self.model = UNet().to(device)
+            # self.model = UNet2().to(device)
+            self.optimizer = optim.Adam(self.model.parameters(), lr=self.lr)
+            self.load_checkpoint()
+        else:
+            print("No model.pth or checkpoint.tar found, exiting.")
+            exit(1)
+
+        self.model.eval()
+
+
+    def solve(self, i0, i1, mode=0):
+        '''
+        Frame Interpolation
+        i0, i1: 2 ndarray frames
+        return: interpolation result
+        mode: 0 for interpolation, 1 for extrapolation
+        '''
+        i0_normed = self.norm(np.array(i0))
+        i1_normed = self.norm(np.array(i1))
+        i0_padded = self.pad(i0_normed)
+        i1_padded = self.pad(i1_normed)
+        i0_padded = self.to_tensor(i0_padded)
+        i1_normed = self.to_tensor(i1_normed)
+        i1_padded = self.to_tensor(i1_padded)
+
+        # Run the network with input
+        with torch.no_grad():
+            duo = torch.cat([i0_padded, i1_padded], dim=0)
+            duo = torch.reshape(duo, (1, 8*self.crop_size[0], 1, -1))
+            output = self.model(duo)
+            output = torch.reshape(output, (1, 4, self.label_size[0], -1))
+            out = output[0] + i1_normed
+
+        return np.transpose(out.numpy(), (1, 2, 0))
 
 
     def clean_up(self):
