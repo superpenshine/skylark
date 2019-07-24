@@ -337,38 +337,41 @@ def get_frames(solver, data_dir, d_name='sigma_data', frames_path='./frames/', v
     mode: inter for interpolation, extra for extrapolation, None for 
     ground truth frames only.
     '''
-    with h5py.File(data_dir, "r") as data:
-        data_d = data[d_name]
-        frame_ids = list(data_d.keys())
-        frame_ids.remove('log_grid')
-        log_grid = data_d['log_grid']
+    data = h5py.File(data_dir, 'r')
+    data_d = data[d_name]
+    frame_ids = list(data_d.keys())
+    frame_ids.remove('log_grid')
+    log_grid = data_d['log_grid']
 
     if not os.path.exists(frames_path):
         os.makedirs(frames_path)
     
-    # make gt frame list
+    # Make gt frame list
     gt_frames, frames = [], []
     for i in range(len(frame_ids)):
         gt_frames.append(np.array(data_d[str(i)]))
 
+    # Interpolation
     if mode == 'inter':
-        #Interpolation
-        frames.append(gt_frames[0])
+        frames.append(gt_frames[0][:,:,var])
         for i in range(len(gt_frames) - 1):
-            mid_frame = solver(gt_frames[i], gt_frames[i + 1])
+            mid_frame = solver(gt_frames[i], gt_frames[i + 1], mode=0)
             frames.extend([mid_frame[:,:,var], gt_frames[i + 1][:,:,var]])
+
+        frames = np.array(frames)
+    # Extrpolation
     elif mode == 'extra':
         raise NotImplementedError()
     else: 
-        raise NotImplementedError()
+        frames = np.array(gt_frames)[:,:,:,var]
 
     #Prepare frames
-    _, ny, _ = np.array(frames[0]).shape
+    _, ny = np.array(frames[0]).shape
     phi = (np.arange(0, ny) * 1.0 / ny + 0.5 / ny) * 2 * np.pi
 
     for frame_id in range(len(frames)):
-        img = frame[frame_id]
-        path = frames_path + frame_id + '.png'
+        img = frames[frame_id]
+        path = frames_path + str(frame_id) + '.png'
         if polar:
             plt.subplot(1, 1, 1, projection='polar')
             rp1, rp2 = np.meshgrid(phi, log_grid)
