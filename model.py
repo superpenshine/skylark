@@ -18,7 +18,7 @@ def ConvBlock(fan_in, fan_out, stride=1, bias=False):
     3x3 convolution with padding
     '''
     # return nn.Conv2d(fan_in, fan_out, kernel_size=3, stride=stride, bias=bias)
-    return nn.Conv2d(fan_in, fan_out, kernel_size=(1, 3), stride=stride, bias=bias)
+    return nn.Conv2d(fan_in, fan_out, kernel_size=(1, 5), stride=stride, bias=bias)
 
 
 class ResUnit(nn.Module):
@@ -73,14 +73,6 @@ class ResNet(nn.Module):
         self.layer5 = self._make_layer(ResUnit, 512, 1)
         self.layer6 = self._make_layer(ResUnit, 512, 1)
         self.layer7 = self._make_layer(ResUnit, 512, 1)
-        self.layer8 = self._make_layer(ResUnit, 512, 1)
-        self.layer9 = self._make_layer(ResUnit, 512, 1)
-        self.layer10 = self._make_layer(ResUnit, 512, 1)
-        self.layer11 = self._make_layer(ResUnit, 512, 1)
-        self.layer12 = self._make_layer(ResUnit, 512, 1)
-        self.layer13 = self._make_layer(ResUnit, 512, 1)
-        self.layer14 = self._make_layer(ResUnit, 512, 1)
-        self.layer15 = self._make_layer(ResUnit, 512, 1)
         self.out_conv = ConvBlock(512, 1*4*32, bias=True)
 
 
@@ -113,14 +105,6 @@ class ResNet(nn.Module):
         x = self.layer5(x)
         x = self.layer6(x)
         x = self.layer7(x)
-        x = self.layer8(x)
-        x = self.layer9(x)
-        x = self.layer10(x)
-        x = self.layer11(x)
-        x = self.layer12(x)
-        x = self.layer13(x)
-        x = self.layer14(x)
-        x = self.layer15(x)
         x = self.out_conv(x)
 
         return x
