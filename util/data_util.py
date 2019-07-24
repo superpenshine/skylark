@@ -195,13 +195,15 @@ def preview(data, log_grid, polar = False, var = 1):
 
     # Show img in polar
     if polar:
-        phi = (np.arange(0,ny)*1.0/ny + 0.5/ny)*2*np.pi
+        phi = (np.arange(0, ny) * 1.0 / ny + 0.5 / ny) * 2 * np.pi
+        plt.subplot(1, 1, 1, projection='polar')
         # vertical orbit
-        rp1, rp2 = np.meshgrid(log_grid, phi)
-        plt.pcolormesh(rp1, rp2, data[:,:,var].T)
+        # rp1, rp2 = np.meshgrid(log_grid, phi)
+        # plt.pcolormesh(rp1, rp2, data[:,:,var].T)
         # horizontal orbit
-        # rp1, rp2 = np.meshgrid(phi, log_grid)
-        # plt.pcolormesh(rp1, rp2, data[:,:,var])
+        rp1, rp2 = np.meshgrid(phi, log_grid)
+        plt.pcolormesh(rp1, rp2, data[:,:,var])
+        plt.axis([0, 2*np.pi, 0, 2])
     else:
         plt.imshow(data[:,:,var])
 
@@ -323,15 +325,59 @@ def make_video():
     cv2.destroyAllWindows()
     video.release()
 
-def to_frames(data_dir, d_name='sigma_data', frames_path='./frames/', var = 1):
-    with h5py.File(data_dir, "r") as data:
-        data_d = data[d_name]
-        frame_ids = list(data_d.keys())
-        frame_ids.remove('log_grid')
 
-        if not os.path.exists(frames_path):
-            os.makedirs(frames_path)
-        for frame_id in frame_ids:
-            img = np.array(data_d[frame_id])[:,:,var]
-            plt.imsave(frames_path + frame_id + '.png', img, vmin=np.amin(img), vmax=np.amax(img))
+def get_frames(solver, data_dir, d_name='sigma_data', frames_path='./frames/', var=1, polar=True, mode='inter'):
+    '''
+    Turn image data to frames
+    solver: solver gives the interpolation or extrapolation result
+    data_dir: directory to h5py data
+    d_name: dataset name to use
+    frames_path: path to frame output folder
+    polar: whether the output frames is in polar projection
+    mode: inter for interpolation, extra for extrapolation, None for 
+    ground truth frames only.
+    '''
+    data = h5py.File(data_dir, 'r')
+    data_d = data[d_name]
+    frame_ids = list(data_d.keys())
+    frame_ids.remove('log_grid')
+    log_grid = data_d['log_grid']
 
+    if not os.path.exists(frames_path):
+        os.makedirs(frames_path)
+    
+    # Make gt frame list
+    gt_frames, frames = [], []
+    for i in range(len(frame_ids)):
+        gt_frames.append(np.array(data_d[str(i)]))
+
+    # Interpolation
+    if mode == 'inter':
+        frames.append(gt_frames[0][:,:,var])
+        for i in range(len(gt_frames) - 1):
+            mid_frame = solver(gt_frames[i], gt_frames[i + 1], mode=0)
+            frames.extend([mid_frame[:,:,var], gt_frames[i + 1][:,:,var]])
+
+        frames = np.array(frames)
+    # Extrpolation
+    elif mode == 'extra':
+        raise NotImplementedError()
+    else: 
+        frames = np.array(gt_frames)[:,:,:,var]
+
+    #Prepare frames
+    _, ny = np.array(frames[0]).shape
+    phi = (np.arange(0, ny) * 1.0 / ny + 0.5 / ny) * 2 * np.pi
+
+    for frame_id in range(len(frames)):
+        img = frames[frame_id]
+        path = frames_path + str(frame_id) + '.png'
+        if polar:
+            plt.subplot(1, 1, 1, projection='polar')
+            rp1, rp2 = np.meshgrid(phi, log_grid)
+            plt.pcolormesh(rp1, rp2, img)
+            plt.axis([0, 2 * np.pi, 0, 2])
+            plt.savefig(path)
+            plt.close()
+        else:
+            plt.imsave(path, img, vmin=np.amin(img), vmax=np.amax(img))
