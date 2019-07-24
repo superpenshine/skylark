@@ -206,11 +206,11 @@ class network(object):
             duo = torch.reshape(duo, (label.shape[0], 8*self.crop_size[0], 1, -1))
             output = self.model(duo)
             output = torch.reshape(output, (label.shape[0], 4, self.label_size[0], -1))
-            # loss = self.criterion(output + i1_crop, label)
+            loss = self.criterion(output + i1_crop, label)
 
             # Loss = mean(MSE(I, I_gt)) + alpha * (mean(MSE(dI_x, dI_xgt)) + mean(MSE(dI_y, dI_ygt)))
-            output = output + i1_crop
-            loss = self.criterion(output, label) + 0.1 * self.criterion(output[:,:,:,1:] - output[:,:,:,:-1], label[:,:,:,1:] - label[:,:,:,:-1])
+            # output = output + i1_crop
+            # loss = self.criterion(output, label) + 0.1 * self.criterion(output[:,:,:,1:] - output[:,:,:,:-1], label[:,:,:,1:] - label[:,:,:,:-1])
 
             loss.backward()
             self.optimizer.step()
@@ -242,9 +242,9 @@ class network(object):
                 duo = torch.reshape(duo, (label.shape[0], 8*self.crop_size[0], 1, -1))
                 output = self.model(duo)
                 output = torch.reshape(output, (label.shape[0], 4, self.label_size[0], -1))
-                # loss = self.criterion(output + i1_crop, label)\
-                output = output + i1_crop
-                loss = self.criterion(output, label) + 0.1 * self.criterion(output[:,:,:,1:] - output[:,:,:,:-1], label[:,:,:,1:] - label[:,:,:,:-1])
+                loss = self.criterion(output + i1_crop, label)
+                # output = output + i1_crop
+                # loss = self.criterion(output, label) + 0.1 * self.criterion(output[:,:,:,1:] - output[:,:,:,:-1], label[:,:,:,1:] - label[:,:,:,:-1])
                 
                 valid_loss += loss.item()
                 n_batch += 1
