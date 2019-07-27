@@ -540,12 +540,12 @@ class network(object):
         self.model.eval()
 
 
-    def solve(self, i0, i1, mode=0):
+    def solve(self, i0, i1):
         '''
-        Frame Interpolation
+        Frame Interpolation or extrapolation, depending
+        on the given checkpoint.tar or model.pth
         i0, i1: 2 ndarray frames
         return: interpolation result
-        mode: 0 for interpolation, 1 for extrapolation
         '''
         i0_normed = self.norm(np.array(i0))
         i1_normed = self.norm(np.array(i1))
@@ -562,7 +562,8 @@ class network(object):
             output = self.model(duo)
             output = torch.reshape(output, (1, 4, self.label_size[0], -1))
             out = output[0] + i1_normed
-
+            # out = out * self.std + self.mean
+            
         return np.transpose(out.numpy(), (1, 2, 0))
 
 

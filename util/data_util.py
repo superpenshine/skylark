@@ -318,7 +318,7 @@ def make_video():
     images = [img for img in os.listdir(image_folder) if img.endswith(".png")]
     frame = cv2.imread(os.path.join(image_folder, images[0]))
     height, width, layers = frame.shape
-    video = cv2.VideoWriter(video_name, 0, 8, (width,height))
+    video = cv2.VideoWriter(video_name, 0, 15, (width, height))
     for i in range(len(images)):
         video.write(cv2.imread(os.path.join(image_folder, str(i) + '.png')))
 
@@ -326,7 +326,7 @@ def make_video():
     video.release()
 
 
-def get_frames(solver, data_dir, d_name='sigma_data', frames_path='./frames/', var=1, polar=True, mode='inter'):
+def get_frames(solver, data_dir, d_name='sigma_data', frames_path='./frames/', var=1, polar=False, mode=None):
     '''
     Turn image data to frames
     solver: solver gives the interpolation or extrapolation result
@@ -351,22 +351,26 @@ def get_frames(solver, data_dir, d_name='sigma_data', frames_path='./frames/', v
     for i in range(len(frame_ids)):
         gt_frames.append(np.array(data_d[str(i)]))
 
-    # Interpolation
-    if mode == 'inter':
+    if not mode:
+        frames = np.array(gt_frames)[:,:,:,var]
+    else:
+        # Interpolate or extrapolate 
         frames.append(gt_frames[0][:,:,var])
         for i in range(len(gt_frames) - 1):
-            mid_frame = solver(gt_frames[i], gt_frames[i + 1], mode=0)
-            frames.extend([mid_frame[:,:,var], gt_frames[i + 1][:,:,var]])
+            print("{}%".format(i * 100.0 / (len(gt_frames) - 1)))
+            synthesized = solver(gt_frames[i], gt_frames[i + 1])
+            if mode == 'inter':
+                frames.extend([synthesized[:,:,var], gt_frames[i + 1][:,:,var]])
+                continue
+            if mode == 'extra':
+                frames.extend([gt_frames[i + 1][:,:,var], synthesized[:,:,var]])
+                continue
+            raise ValueError("Mode must be either inter or extra.")
 
         frames = np.array(frames)
-    # Extrpolation
-    elif mode == 'extra':
-        raise NotImplementedError()
-    else: 
-        frames = np.array(gt_frames)[:,:,:,var]
 
     #Prepare frames
-    _, ny = np.array(frames[0]).shape
+    ny = np.array(frames[0]).shape[1]
     phi = (np.arange(0, ny) * 1.0 / ny + 0.5 / ny) * 2 * np.pi
 
     for frame_id in range(len(frames)):
@@ -379,5 +383,5 @@ def get_frames(solver, data_dir, d_name='sigma_data', frames_path='./frames/', v
             plt.axis([0, 2 * np.pi, 0, 2])
             plt.savefig(path)
             plt.close()
-        else:
-            plt.imsave(path, img, vmin=np.amin(img), vmax=np.amax(img))
+            continue
+        plt.imsave(path, img, vmin=np.amin(img), vmax=np.amax(img))
