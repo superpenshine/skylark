@@ -19,11 +19,11 @@ def add_argument_group(name):
 sys_arg = add_argument_group("Data")
 
 sys_arg.add_argument("--min_step_diff", type=int,
-                    default=2,
+                    default=None,
                     help="None or an integer indicating min step difference")
 
 sys_arg.add_argument("--max_step_diff", type=int,
-                    default=None,
+                    default=2,
                     help="None or an integer indicating max step difference")
 
 sys_arg.add_argument("--batch_size", type=int,
