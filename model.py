@@ -217,14 +217,10 @@ class UNet2(nn.Module):
         self.fan_in = 256
         self.d_layer1 = self._make_layer(DoubleConv, 256)
         self.d_layer2 = self._make_layer(DoubleConv, 512)
-        self.pool1 = MaxPool()
-        self.pool2 = MaxPool()
 
         self.bot_layer = self._make_layer(DoubleConv, 1024)
 
-        self.upconv1 = self._make_layer(UpConv, 512)
         self.u_layer1 = self._make_layer(DoubleConv, 512, cat=512)
-        self.upconv2 = self._make_layer(UpConv, 256)
         self.u_layer2 = self._make_layer(DoubleConv, 256, cat=256)
 
         self.out = nn.Conv2d(256, 1*4*32, kernel_size=1, stride=1, bias=True)
@@ -245,31 +241,24 @@ class UNet2(nn.Module):
 
     def forward(self, x):
         x = self.d_layer1(x)
-        # import pdb
-        # pdb.set_trace()
         residual1 = x
-
-        x = self.pool1(x)
         x = self.d_layer2(x) 
         residual2 = x
 
-        x = self.pool2(x)
-
         x = self.bot_layer(x)
 
-        x = self.upconv1(x)
         tl, br = crop_position(residual2.size(), x.size())
         residual2 = residual2[:,:,tl[0]:br[0],tl[1]:br[1]]
         x = torch.cat((x, residual2[:,:,:x.size()[2],:x.size()[3]]), 1)
         x = self.u_layer1(x)
 
-        x = self.upconv2(x)
         tl, br = crop_position(residual1.size(), x.size())
         residual1 = residual1[:,:,tl[0]:br[0],tl[1]:br[1]]
         x = torch.cat((x, residual1[:,:,:x.size()[2],:x.size()[3]]), 1)
         x = self.u_layer2(x)
 
         x = self.out(x)
+        
         return x
 
 
