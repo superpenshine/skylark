@@ -44,11 +44,11 @@ def main():
         data, grid = load(str("D:/sigma_data/data_logpolar") + "_tr.h5", "sigma_data", 60)
         preview(data, grid, polar=True)
     elif config.m == 'a':
-        make_video()
+        make_video(fps=5)
     elif config.m == 'frame':
         solver.setup()
         # get_frames(solver.solve, str(config.h5_dir_win) + "_tr.h5", d_name='sigma_data', var=1, mode='inter')
-        get_frames(solver.solve, 'D:/sigma_data/data_logpolar_resized32_tr.h5', d_name='sigma_data', var=1, mode='inter', polar=False)
+        get_frames(solver.solve, 'D:/sigma_data/data_logpolar_resized32_tr.h5', d_name='sigma_data', var=1, mode='extra', polar=False, start_frame=20)
     elif config.m == 'sanity':
         solver.sanity_check_regular_loss()
         # solver.sanity_check_randcrop_interpo_loss()

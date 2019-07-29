@@ -562,9 +562,13 @@ class network(object):
             output = self.model(duo)
             output = torch.reshape(output, (1, 4, self.label_size[0], -1))
             out = output[0] + i1_normed
-            # out = out * self.std + self.mean
-            
-        return np.transpose(out.numpy(), (1, 2, 0))
+            out = np.transpose(out.numpy(), (1, 2, 0))
+
+        # Unormalize
+        out = np.multiply(np.reshape(out, (out.shape[0] * out.shape[1], -1)), self.std) + self.mean
+        out = np.reshape(out, (i0.shape[0], i1.shape[1], -1))
+        
+        return out
 
 
     def clean_up(self):

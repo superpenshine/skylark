@@ -308,7 +308,7 @@ def get_stats(h5_dir_tr, h5_dir_va, n_chan, verbose=False):
     return mean, std
 
 
-def make_video():
+def make_video(fps=5):
     '''
     Make video out of frames
     ''' 
@@ -318,7 +318,7 @@ def make_video():
     images = [img for img in os.listdir(image_folder) if img.endswith(".png")]
     frame = cv2.imread(os.path.join(image_folder, images[0]))
     height, width, layers = frame.shape
-    video = cv2.VideoWriter(video_name, 0, 15, (width, height))
+    video = cv2.VideoWriter(video_name, 0, fps, (width, height))
     for i in range(len(images)):
         video.write(cv2.imread(os.path.join(image_folder, str(i) + '.png')))
 
@@ -326,7 +326,26 @@ def make_video():
     video.release()
 
 
-def get_frames(solver, data_dir, d_name='sigma_data', frames_path='./frames/', var=1, polar=False, mode=None):
+def flood(solver, lst, n_to_extra):
+    '''
+    Extrapolate recursively
+    solver: solver gives the interpolation or extrapolation result
+    lst: extrapolated frame list
+    n_to_extra: number of frames to extrapolate
+    '''
+    if n_to_extra == 0:
+        return
+
+    i0 = lst[-2]
+    i1 = lst[-1]
+    i2 = solver(i0, i1)
+    lst.append(i2)
+    flood(solver, lst, n_to_extra - 1)
+
+    return lst
+
+
+def get_frames(solver, data_dir, d_name='sigma_data', frames_path='./frames/', var=1, polar=False, mode=None, start_frame=0):
     '''
     Turn image data to frames
     solver: solver gives the interpolation or extrapolation result
@@ -348,26 +367,33 @@ def get_frames(solver, data_dir, d_name='sigma_data', frames_path='./frames/', v
     
     # Make gt frame list
     gt_frames, frames = [], []
-    for i in range(len(frame_ids)):
+    n_gt = len(frame_ids)
+    for i in range(n_gt):
         gt_frames.append(np.array(data_d[str(i)]))
 
     if not mode:
         frames = np.array(gt_frames)[:,:,:,var]
-    else:
-        # Interpolate or extrapolate 
-        frames.append(gt_frames[0][:,:,var])
-        for i in range(len(gt_frames) - 1):
-            print("{}%".format(i * 100.0 / (len(gt_frames) - 1)))
-            synthesized = solver(gt_frames[i], gt_frames[i + 1])
-            if mode == 'inter':
-                frames.extend([synthesized[:,:,var], gt_frames[i + 1][:,:,var]])
-                continue
-            if mode == 'extra':
-                frames.extend([gt_frames[i + 1][:,:,var], synthesized[:,:,var]])
-                continue
-            raise ValueError("Mode must be either inter or extra.")
 
-        frames = np.array(frames)
+    elif mode == 'extra':
+        frames = np.array(flood(solver, [gt_frames[start_frame], gt_frames[start_frame + 1]], n_gt - (2 + start_frame)))[:,:,:,var]
+        loss_per_frame = np.sum(np.abs(frames - np.array(gt_frames)[start_frame:,:,:,var]), axis=(1, 2))
+        n_pixel = frames[0].shape[0] * frames[0].shape[1]
+        print("Cummulative loss(per frame, per pixel)", loss_per_frame / n_pixel)
+        plt.plot(list(range(n_gt - start_frame)), loss_per_frame / n_pixel)
+        plt.show()
+
+    elif mode == 'inter':
+        # Interpolate or extrapolate 
+        frames.append(gt_frames[0])
+        for i in range(n_gt - 1):
+            print("{}%".format(i * 100.0 / (n_gt - 1)))
+            synthesized = solver(gt_frames[i], gt_frames[i + 1])
+            frames.extend([synthesized, gt_frames[i + 1]])
+
+        frames = np.array(frames)[:,:,var]
+
+    else:
+        raise ValueError("Mode must be either inter or extra.")
 
     #Prepare frames
     ny = np.array(frames[0]).shape[1]
