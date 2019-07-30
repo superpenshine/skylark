@@ -42,12 +42,15 @@ def psnr(orig, noisy, max_possible=1):
 
 class network(object):
     """docstring for network"""
-    def __init__(self, config):
+    def __init__(self, config, arch='resnet'):
         '''
         ltl: label top left pos on i1
         lbr: label bot right pos on i1
         '''
         super(network, self).__init__()
+        self.arch = arch
+        if self.arch not in ['resnet', 'unet2', 'unet']:
+            raise ValueError("Architecture not implemented.")
         self.checkpoint = "checkpoint.tar"
         self.model_dir = "model.pth"
         self.data_dir = str(config.h5_dir_linux)
@@ -79,6 +82,7 @@ class network(object):
             self.batch_size = 1
             self.epochs = 1
             self.min_step_diff = 72
+            self.max_step_diff = 74
             self.num_workers = 0
             self.report_freq = 1
             self.checkpoint_freq = 1
@@ -179,9 +183,13 @@ class network(object):
 
         # import IPython
         # IPython.embed()
-        self.model = ResNet().to(self.device)
-        # self.model = UNet().to(self.device)
-        # self.model = UNet2().to(self.device)
+        if self.arch == 'resnet':
+            self.model = ResNet().to(self.device)
+        if self.arch == 'unet':
+            self.model = UNet().to(self.device)
+        if self.arch == 'unet2':
+            self.model = UNet2().to(self.device)
+
         self.optimizer = optim.Adam(self.model.parameters(), lr=self.lr)
         # self.scheduler = optim.lr_scheduler.MultiStepLR(self.optimizer, milestones=[400], gamma=0.5)
         self.criterion = MSELoss().to(self.device) # set reduction=sum, or too smal to see
