@@ -120,11 +120,15 @@ class DoubleConv(nn.Module):
         self.conv2 = ConvBlock(fan_out, fan_out, **kwargs)
         self.relu1 = nn.ReLU(inplace=True)
         self.relu2 = nn.ReLU(inplace=True)
+        self.gn1 = nn.GroupNorm(32, fan_out)
+        self.gn2 = nn.GroupNorm(32, fan_out)
 
     def forward(self, x):
         x = self.conv1(x)
+        x = self.gn1(x)
         x = self.relu1(x)
         x = self.conv2(x)
+        x = self.gn2(x)
         x = self.relu2(x)
 
         return x
