@@ -287,23 +287,23 @@ class UNet(nn.Module):
     '''
     def __init__(self):
         super(UNet, self).__init__()
-        self.fan_in = 512
-        self.conv1 = ConvBlock(2*4*32, 512, bias=True)
-        self.d_layer1 = self._make_layer(DoubleConv, 512, kernel=(1, 33))
-        self.d_layer2 = self._make_layer(DoubleConv, 512, kernel=(1, 17))
+        self.fan_in = 64
+        self.conv1 = ConvBlock(2*4*32, 64, bias=True)
+        self.d_layer1 = self._make_layer(DoubleConv, 128, kernel=(1, 33))
+        self.d_layer2 = self._make_layer(DoubleConv, 256, kernel=(1, 17))
         self.d_layer3 = self._make_layer(DoubleConv, 512, kernel=(1, 9))
         self.pool = MaxPool()
 
-        self.bot_layer = self._make_layer(DoubleConv, 512, kernel=(1, 5))
+        self.bot_layer = self._make_layer(DoubleConv, 1024, kernel=(1, 5))
 
         self.upconv1 = self._make_layer(UpConv, 512)
         self.u_layer1 = self._make_layer(DoubleConv, 512, cat=512, kernel=(1, 9))
         self.upconv2 = self._make_layer(UpConv, 512)
-        self.u_layer2 = self._make_layer(DoubleConv, 512, cat=512, kernel=(1, 17))
+        self.u_layer2 = self._make_layer(DoubleConv, 256, cat=256, kernel=(1, 17))
         self.upconv3 = self._make_layer(UpConv, 512)
-        self.u_layer3 = self._make_layer(DoubleConv, 512, cat=512, kernel=(1, 33))
+        self.u_layer3 = self._make_layer(DoubleConv, 128, cat=128, kernel=(1, 33))
 
-        self.out_conv = ConvBlock(512, 1*4*32, bias=True)
+        self.out_conv = ConvBlock(128, 1*4*32, bias=True)
 
 
     def _make_layer(self, block, fan_out, cat=0, **kwargs):
