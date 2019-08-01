@@ -123,15 +123,25 @@ class DoubleConv(nn.Module):
         self.gn1 = nn.GroupNorm(32, fan_out)
         self.gn2 = nn.GroupNorm(32, fan_out)
 
-    def forward(self, x):
-        x = self.conv1(x)
-        x = self.gn1(x)
-        x = self.relu1(x)
-        x = self.conv2(x)
-        x = self.gn2(x)
-        x = self.relu2(x)
+    def forward(self, x, x_ori=None):
+        if x_ori is not None:
+            residual = x_ori
+        else:
+            residual = x
 
-        return x
+        out = self.conv1(x)
+        out = self.gn1(out)
+        out = self.relu1(out)
+        out = self.conv2(out)
+        out = self.gn2(out)
+        out = self.relu2(out)
+
+        tl = (int(0.5 * (residual.size()[2] - out.size()[2])), int(0.5 * (residual.size()[3] - out.size()[3])))
+        br = (tl[0] + out.size()[2], tl[1] + out.size()[3])
+        residual = residual[:,:,tl[0]:br[0],tl[1]:br[1]]
+        out = out + residual
+
+        return out
 
 
 # def UpConv(fan_in, fan_out, stride=2):
@@ -343,22 +353,25 @@ class UNet(nn.Module):
         x = self.bot_layer(x)
 
         x = self.upconv1(x)
+        x_ori = x
         tl, br = crop_position(residual3.size(), x.size())
         residual3 = residual3[:,:,tl[0]:br[0],tl[1]:br[1]]
         x = torch.cat((x, residual3[:,:,:x.size()[2],:x.size()[3]]), 1)
-        x = self.u_layer1(x)
+        x = self.u_layer1(x, x_ori)
 
         x = self.upconv2(x)
+        x_ori = x
         tl, br = crop_position(residual2.size(), x.size())
         residual2 = residual2[:,:,tl[0]:br[0],tl[1]:br[1]]
         x = torch.cat((x, residual2[:,:,:x.size()[2],:x.size()[3]]), 1)
-        x = self.u_layer2(x)
+        x = self.u_layer2(x, x_ori)
 
         x = self.upconv3(x)
+        x_ori = x
         tl, br = crop_position(residual1.size(), x.size())
         residual1 = residual1[:,:,tl[0]:br[0],tl[1]:br[1]]
         x = torch.cat((x, residual1[:,:,:x.size()[2],:x.size()[3]]), 1)
-        x = self.u_layer3(x)
+        x = self.u_layer3(x, x_ori)
 
         x = self.out_conv(x)
         return x
