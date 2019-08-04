@@ -76,17 +76,18 @@ class network(object):
             self.pin_memory = False
             self.valid_required = True
             self.data_dir = str(config.h5_dir_win)
-            self.batch_size = 1
-            self.epochs = 60000
+            self.batch_size = 10
+            self.epochs = 20050
             self.min_step_diff = None
+            self.max_step_diff = 2
             self.num_workers = 0
             self.report_freq = 1
-            self.checkpoint_freq = 1
+            self.checkpoint_freq = 200
             self.lr = 0.000001
 
         # Inferenced parameter
         self.tr_data_dir = Path(self.data_dir + "_tr.h5")
-        self.va_data_dir = Path(self.data_dir + "_va.h5")
+        self.va_data_dir = Path(self.data_dir + "_te.h5")
         # Sizes to crop the input img
         self.ltl = (int(0.5 * (self.crop_size[0] - self.label_size[0])), int(0.5 * (self.crop_size[1] - self.label_size[1])))
         self.lbr = (self.ltl[0] + self.label_size[0], self.ltl[1] + self.label_size[1])
@@ -206,11 +207,11 @@ class network(object):
             duo = torch.reshape(duo, (label.shape[0], 8*self.crop_size[0], 1, -1))
             output = self.model(duo)
             output = torch.reshape(output, (label.shape[0], 4, self.label_size[0], -1))
-            # loss = self.criterion(output + i1_crop, label)
+            loss = self.criterion(output + i1_crop, label)
 
             # Loss = mean(MSE(I, I_gt)) + alpha * (mean(MSE(dI_x, dI_xgt)) + mean(MSE(dI_y, dI_ygt)))
-            output = output + i1_crop
-            loss = self.criterion(output, label) + 0.1 * self.criterion(output[:,:,:,1:] - output[:,:,:,:-1], label[:,:,:,1:] - label[:,:,:,:-1])
+            # output = output + i1_crop
+            # loss = self.criterion(output, label) + 0.1 * self.criterion(output[:,:,:,1:] - output[:,:,:,:-1], label[:,:,:,1:] - label[:,:,:,:-1])
 
             loss.backward()
             self.optimizer.step()
@@ -242,13 +243,13 @@ class network(object):
                 duo = torch.reshape(duo, (label.shape[0], 8*self.crop_size[0], 1, -1))
                 output = self.model(duo)
                 output = torch.reshape(output, (label.shape[0], 4, self.label_size[0], -1))
-                # loss = self.criterion(output + i1_crop, label)\
-                output = output + i1_crop
-                loss = self.criterion(output, label) + 0.1 * self.criterion(output[:,:,:,1:] - output[:,:,:,:-1], label[:,:,:,1:] - label[:,:,:,:-1])
+                loss = self.criterion(output + i1_crop, label)
+                # output = output + i1_crop
+                # loss = self.criterion(output, label) + 0.1 * self.criterion(output[:,:,:,1:] - output[:,:,:,:-1], label[:,:,:,1:] - label[:,:,:,:-1])
                 
                 valid_loss += loss.item()
                 n_batch += 1
-                print("batch{}, loss: {:.4f}".format(n_batch, loss.item()))
+                print("batch{}, loss: {}".format(n_batch, loss.item()))
 
         return valid_loss / n_batch
 
@@ -338,7 +339,7 @@ class network(object):
                     self.model.eval()
                     valid_result = self.valid()
                     self.writer.add_scalar('Valid/Loss', valid_result, self.step)
-                    print("Validation loss: {:.4f}".format(valid_result))
+                    print("Validation loss: {}".format(valid_result))
                 self.writer.add_scalar('Train/Loss', train_result, self.step)
                 self.model.train()
             # if epoch % 10 == 0:

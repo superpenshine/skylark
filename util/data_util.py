@@ -62,6 +62,7 @@ def save_to_h5(config, polar = False, size = None, trva=None):
     if trva:
         out_tr = h5py.File(Path(str(h5_dir) + "_tr.h5"))
         out_va = h5py.File(Path(str(h5_dir) + "_va.h5"))
+        out_te = h5py.File(Path(str(h5_dir) + "_te.h5"))
     else:
         h5_fout = h5py.File(h5_dir.with_suffix('.h5'))
 
@@ -84,8 +85,10 @@ def save_to_h5(config, polar = False, size = None, trva=None):
         if trva:
             disk_grp_tr = out_tr.create_group(fo_name)
             disk_grp_va = out_va.create_group(fo_name)
+            disk_grp_te = out_te.create_group(fo_name)
             disk_grp_tr["log_grid"] = log_grid
             disk_grp_va["log_grid"] = log_grid
+            disk_grp_te["log_grid"] = log_grid
         else:
             disk_grp = h5_fout.create_group(fo_name)
             disk_grp["log_grid"] = log_grid
@@ -95,13 +98,15 @@ def save_to_h5(config, polar = False, size = None, trva=None):
             # Assume even for train, odd for validation
             f_len = len(f_names)
             
-            # f_names_tr = list(map(f_names.__getitem__, list(range(0, f_len, 2))))
-            # f_names_va = list(map(f_names.__getitem__, list(range(1, f_len, 2))))
+            f_names_tr = list(map(f_names.__getitem__, list(range(0, f_len, 2))))
+            f_names_va = list(map(f_names.__getitem__, list(range(1, f_len, 2))))
+            f_names_te = f_names_va[int(len(f_names_va) / 2):]
+            f_names_va = f_names_va[:int(len(f_names_va) / 2)]
             
             # Assume split data with given validation percentage
-            split = int(f_len * (1 - config.valid_size))
-            f_names_tr = f_names[:split]
-            f_names_va = f_names[split:]
+            # split = int(f_len * (1 - config.valid_size))
+            # f_names_tr = f_names[:split]
+            # f_names_va = f_names[split:]
             
             # Write to tr/va files
             for j, f in enumerate(f_names_tr):
@@ -121,6 +126,15 @@ def save_to_h5(config, polar = False, size = None, trva=None):
                 if size:
                     data = resize(data)
                 disk_grp_va[str(j)] = data
+
+            for j, f in enumerate(f_names_te):
+                print("te", j)
+                data = load_from_binary(f, log_grid, nvar, polar)
+                if polar:
+                    data = toPolar(log_grid, data)
+                if size:
+                    data = resize(data)
+                disk_grp_te[str(j)] = data
         else:
             for j, f in enumerate(f_names):
                 print(j)

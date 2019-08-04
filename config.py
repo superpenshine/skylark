@@ -85,8 +85,8 @@ sys_arg.add_argument("-m", type=str,
                     p: for preview''')
 
 sys_arg.add_argument("--data_dir", type=Path,
-                    # default='D:/sigma_data',
-                    default='/home/sht/data/sigma_data',
+                    default='D:/sigma_data',
+                    # default='/home/sht/data/sigma_data',
                     help="Directory to data folder")
 
 sys_arg.add_argument("--h5_dir_win", type=Path,
