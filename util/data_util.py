@@ -372,7 +372,7 @@ def get_frames(solver, data_dir, d_name='sigma_data', frames_path='./frames/', v
         gt_frames.append(np.array(data_d[str(i)]))
 
     if not mode:
-        frames = np.array(gt_frames)[:,:,:,var]
+        frames = np.array(gt_frames)[start_frame:,:,:,var]
 
     elif mode == 'extra':
         frames = np.array(flood(solver, [gt_frames[start_frame], gt_frames[start_frame + 1]], n_gt - (2 + start_frame)))[:,:,:,var]
@@ -380,6 +380,9 @@ def get_frames(solver, data_dir, d_name='sigma_data', frames_path='./frames/', v
         n_pixel = frames[0].shape[0] * frames[0].shape[1]
         print("Cummulative loss(per frame, per pixel)", loss_per_frame / n_pixel)
         plt.plot(list(range(n_gt - start_frame)), loss_per_frame / n_pixel)
+        plt.yscale('log')
+        plt.ylabel('Cummulative Loss(Log scaled)')
+        plt.xlabel('Frame Index')
         plt.show()
 
     elif mode == 'inter':
