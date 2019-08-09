@@ -42,7 +42,7 @@ def psnr(orig, noisy, max_possible=1):
 
 class network(object):
     """docstring for network"""
-    def __init__(self, config, arch='resnet'):
+    def __init__(self, config, arch='resnet', mode='inter'):
         '''
         ltl: label top left pos on i1
         lbr: label bot right pos on i1
@@ -51,6 +51,7 @@ class network(object):
         self.arch = arch
         if self.arch not in ['resnet', 'unet2', 'unet']:
             raise ValueError("Architecture not implemented.")
+        self.mode = mode
         self.checkpoint = "checkpoint.tar"
         self.model_dir = "model.pth"
         self.data_dir = str(config.h5_dir_linux)
@@ -79,18 +80,18 @@ class network(object):
             self.pin_memory = False
             self.valid_required = True
             self.data_dir = str(config.h5_dir_win)
-            self.batch_size = 1
-            self.epochs = 1
-            self.min_step_diff = 72
-            self.max_step_diff = 74
+            self.batch_size = 10
+            self.epochs = 20050
+            self.min_step_diff = None
+            self.max_step_diff = 2
             self.num_workers = 0
             self.report_freq = 1
-            self.checkpoint_freq = 1
+            self.checkpoint_freq = 200
             self.lr = 0.000001
 
         # Inferenced parameter
         self.tr_data_dir = Path(self.data_dir + "_tr.h5")
-        self.va_data_dir = Path(self.data_dir + "_va.h5")
+        self.va_data_dir = Path(self.data_dir + "_te.h5")
         # Sizes to crop the input img
         self.ltl = (int(0.5 * (self.crop_size[0] - self.label_size[0])), int(0.5 * (self.crop_size[1] - self.label_size[1])))
         self.lbr = (self.ltl[0] + self.label_size[0], self.ltl[1] + self.label_size[1])
@@ -140,12 +141,14 @@ class network(object):
         self.data_tr = Astrodata(self.tr_data_dir, 
                             min_step_diff = self.min_step_diff, 
                             max_step_diff = self.max_step_diff,
-                            transforms = trans) # RandomCrop is group op
+                            transforms = trans, 
+                            mode = self.mode) # RandomCrop is group op
 
         self.data_va = Astrodata(self.va_data_dir, 
                             min_step_diff = self.min_step_diff, 
                             max_step_diff = self.max_step_diff, 
-                            transforms = trans) # RandomCrop is group op
+                            transforms = trans, 
+                            mode = self.mode) # RandomCrop is group op
         # Randomly shuffle and split data to train/valid
         # np.random.seed(1234)
         # indices = list(range(len(data)))
@@ -339,14 +342,14 @@ class network(object):
             # self.scheduler.step(epoch)
             print("\n===> epoch: {}/{}".format(epoch, self.epochs))
             train_result = self.train()
-            print("Epoch {} loss: {:.4f}".format(epoch, train_result))
+            print("Epoch {} loss: {}".format(epoch, train_result))
             # test_result = self.test()
             if epoch % self.report_freq == 0:
                 if self.valid_required:
                     self.model.eval()
                     valid_result = self.valid()
                     self.writer.add_scalar('Valid/Loss', valid_result, self.step)
-                    print("Validation loss: {:.4f}".format(valid_result))
+                    print("Validation loss: {}".format(valid_result))
                 self.writer.add_scalar('Train/Loss', train_result, self.step)
                 self.model.train()
             # if epoch % 10 == 0:
@@ -386,12 +389,14 @@ class network(object):
         data_tr = Astrodata(self.tr_data_dir, 
                             min_step_diff = self.min_step_diff, 
                             max_step_diff = self.max_step_diff, 
-                            verbose = True) # RandomCrop is group op
+                            verbose = True, 
+                            mode = self.mode) # RandomCrop is group op
 
         data_va = Astrodata(self.va_data_dir, 
                             min_step_diff = self.min_step_diff, 
                             max_step_diff = self.max_step_diff, 
-                            verbose = True) # RandomCrop is group op
+                            verbose = True, 
+                            mode = self.mode) # RandomCrop is group op
 
         # Randomly choose triplet if not given
         if not triplet_id and triplet_id != 0:
@@ -537,7 +542,7 @@ class network(object):
 
     def setup(self):
         '''
-        Set up network for interpolation/extrapolation/test_single
+        Set up network for evaluation only
         '''
         self.mean, self.std = get_stats(self.tr_data_dir, self.va_data_dir, self.nvar)
         self.norm = Normalize(self.mean, self.std)
@@ -545,13 +550,20 @@ class network(object):
         self.to_tensor = ToTensor()
         # Load network to cpu
         device = torch.device('cpu')
+
         if Path(self.model_dir).exists():
             self.load(map_location=device)
         elif Path(self.checkpoint).exists():
             print("Model file does not exists, trying checkpoint")
-            self.model = ResNet().to(device)
-            # self.model = UNet().to(device)
-            # self.model = UNet2().to(device)
+
+            if self.arch == 'resnet':
+                self.model = ResNet().to(device)
+            if self.arch == 'unet':
+                self.model = UNet().to(device)
+            if self.arch == 'unet2':
+                self.model = UNet2().to(device)
+            print("Using {}".format(self.arch))
+
             self.optimizer = optim.Adam(self.model.parameters(), lr=self.lr)
             self.load_checkpoint()
         else:
