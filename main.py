@@ -31,7 +31,7 @@ def main():
     # network = nn(config)
     # network.load_img_on_tb(data, grid)
 
-    solver = network(config, arch='resnet', mode='extra')
+    solver = network(config, arch='unet', mode='extra')
     if config.m == 'v':
         solver.test_single(triplet_id=10, step_diff=(None, 2), dataset='tr', audience='normal', var=1) # set min step diff to make the input fixed
     elif config.m == 'save':
