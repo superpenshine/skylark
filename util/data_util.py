@@ -399,11 +399,15 @@ def get_frames(solver, data_dir, d_name='sigma_data', frames_path='./frames/', v
         raise ValueError("Mode must be either inter or extra.")
 
     #Prepare frames
-    ny = np.array(frames[0]).shape[1]
+    ny = frames[0].shape[1]
     phi = (np.arange(0, ny) * 1.0 / ny + 0.5 / ny) * 2 * np.pi
+    vmax = np.amax(frames[0]) * 1000
+    vmin = np.amin(frames[1]) * 1000
+    resize = Resize((512, 512))
 
     for frame_id in range(len(frames)):
-        img = frames[frame_id]
+        img = np.clip(frames[frame_id], vmin, vmax)
+        img = resize(img)
         path = frames_path + str(frame_id) + '.png'
         if polar:
             plt.subplot(1, 1, 1, projection='polar')

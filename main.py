@@ -33,7 +33,7 @@ def main():
 
     solver = network(config, arch='resnet', mode='extra')
     if config.m == 'v':
-        solver.test_single(triplet_id=20, step_diff=(None, 2), dataset='va', audience='normal', var=1) # set min step diff to make the input fixed
+        solver.test_single(triplet_id=10, step_diff=(None, 2), dataset='tr', audience='normal', var=1) # set min step diff to make the input fixed
     elif config.m == 'save':
         save_to_h5(config, trva=True, polar=False, size=config.input_size)
     elif config.m == 'stats':
