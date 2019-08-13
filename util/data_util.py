@@ -284,6 +284,7 @@ def get_stats(h5_dir_tr, h5_dir_va, n_chan, verbose=False):
     Get dataset stats
     '''
     n = 0
+    _max = 0
     _sum = np.zeros(n_chan)
     sum_minus_mean_square = np.zeros(n_chan)
 
@@ -295,6 +296,7 @@ def get_stats(h5_dir_tr, h5_dir_va, n_chan, verbose=False):
             d_step = len(disk_data.keys()) - 1
             for d_step in range(d_step):
                 img = np.array(disk_data[str(d_step)])
+                _max = max(_max, np.amax(img[:,:,1]))
                 _sum += np.sum(np.sum(img, axis=0), axis=0)
                 h, w = img.shape[:-1]
                 n += h * w
@@ -319,7 +321,7 @@ def get_stats(h5_dir_tr, h5_dir_va, n_chan, verbose=False):
         for chan in range(n_chan):
             print("Channel{} mean: {}, std: {}".format(chan, mean[chan], std[chan]))
 
-    return mean, std
+    return mean, std, _max
 
 
 def make_video(fps=5):
@@ -359,7 +361,7 @@ def flood(solver, lst, n_to_extra):
     return lst
 
 
-def get_frames(solver, data_dir, d_name='sigma_data', frames_path='./frames/', var=1, polar=False, mode=None, start_frame=0):
+def get_frames(solver, data_dir, d_name='sigma_data', frames_path='./frames/', var=1, polar=False, mode=None, start_frame=0, size=None):
     '''
     Turn image data to frames
     solver: solver gives the interpolation or extrapolation result
@@ -415,13 +417,17 @@ def get_frames(solver, data_dir, d_name='sigma_data', frames_path='./frames/', v
     #Prepare frames
     ny = frames[0].shape[1]
     phi = (np.arange(0, ny) * 1.0 / ny + 0.5 / ny) * 2 * np.pi
-    vmax = np.amax(frames[0]) * 1000
-    vmin = np.amin(frames[1]) * 1000
-    resize = Resize((512, 512))
+    vmax = np.amax(frames[0])
+    vmin = np.amin(frames[1])
+    if size:
+        resize = Resize(size)
 
     for frame_id in range(len(frames)):
-        img = np.clip(frames[frame_id], vmin, vmax)
-        img = resize(img)
+        # img = np.clip(frames[frame_id], vmin, vmax * (1.12614 ** (frame_id + 1)))
+        img = frames[frame_id]
+        # print(np.amin(img), np.amax(img))
+        if size:
+            img = resize(img)
         path = frames_path + str(frame_id) + '.png'
         if polar:
             plt.subplot(1, 1, 1, projection='polar')

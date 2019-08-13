@@ -110,7 +110,7 @@ class network(object):
         '''
         Prepare train/test data
         '''
-        mean, std = get_stats(self.tr_data_dir, self.va_data_dir, self.nvar)
+        self.mean, self.std, self.max_p = get_stats(self.tr_data_dir, Path("D:/sigma_data/data_logpolar_resized32_va_without test.h5"), self.nvar)
         trans = [
                  # For Cropped input
                  # Crop((0, 0), (440, 1024)), # should be 439x1024
@@ -128,7 +128,7 @@ class network(object):
                  CustomPad((math.ceil((self.crop_size[1] - self.label_size[1])/2), 0, math.ceil((self.crop_size[1] - self.label_size[1])/2), 0), 'circular'), 
                  # CustomPad((0, math.ceil((self.crop_size[0] - self.label_size[0])/2), 0, math.ceil((self.crop_size[0] - self.label_size[0])/2)), 'edge'), 
                  GroupRandomCrop(self.crop_size, label_size=self.label_size), 
-                 Normalize(mean, std),
+                 Normalize(self.mean, self.std),
                  ToTensor()
 
                  # transforms.ToPILImage(), 
@@ -264,12 +264,27 @@ class network(object):
         return valid_loss / n_batch
 
 
+    def print_arch(self):
+        '''
+        Print current model architecture
+        '''
+        print("======== Model ========")
+        model_parameters = filter(lambda p: p.requires_grad, self.model.parameters())
+        params = sum([np.prod(p.size()) for p in model_parameters])
+        print("Number of network parameters: ", params)
+        tensor_list = list(self.model.state_dict().items())
+        for layer_tensor_name, tensor in tensor_list:
+            print('Layer {}: {} elements'.format(layer_tensor_name, torch.numel(tensor)))
+
+        print()
+
+
     def load_checkpoint(self):
         '''
         Load the model from checkpoing
         '''
         checkpoint = torch.load(self.checkpoint)
-        print(checkpoint['model_state_dict'].keys())
+        self.print_arch()
         self.model.load_state_dict(checkpoint['model_state_dict'])
         self.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
         epoch = checkpoint['epoch']
@@ -291,6 +306,34 @@ class network(object):
             'optimizer_state_dict': self.optimizer.state_dict()
             }, self.checkpoint)
         print("Checkpoint saved")
+
+
+    def load_model_or_checkpoint(self):
+        '''
+        Load checkpoint or model if any exists
+        '''
+
+        # Load network to cpu
+        self.device = torch.device('cpu')
+
+        if Path(self.model_dir).exists():
+            self.load(map_location=self.device)
+        elif Path(self.checkpoint).exists():
+            print("Model file does not exists, trying checkpoint")
+
+            if self.arch == 'resnet':
+                self.model = ResNet().to(self.device)
+            if self.arch == 'unet':
+                self.model = UNet().to(self.device)
+            if self.arch == 'unet2':
+                self.model = UNet2().to(self.device)
+            print("Using {}".format(self.arch))
+
+            self.optimizer = optim.Adam(self.model.parameters(), lr=self.lr)
+            self.load_checkpoint()
+        else:
+            print("No model.pth or checkpoint.tar found, exiting.")
+            exit(1)
 
 
     def load(self, **kwargs):
@@ -318,12 +361,8 @@ class network(object):
         self.load_data()
         self.load_writer()
 
-        model_parameters = filter(lambda p: p.requires_grad, self.model.parameters())
-        params = sum([np.prod(p.size()) for p in model_parameters])
-        print("Number of network parameters: ", params)
-        tensor_list = list(self.model.state_dict().items())
-        for layer_tensor_name, tensor in tensor_list:
-            print('Layer {}: {} elements'.format(layer_tensor_name, torch.numel(tensor)))
+
+        self.print_arch()
 
         # Construct network grgh
         # sample_input=(torch.rand(1, 8, self.crop_size[0], self.crop_size[1]))
@@ -469,13 +508,13 @@ class network(object):
             plt.gca().axis('off')
             plt.subplot(254)
             # plt.title('Out')
-            plt.imshow(out_unormed)
-            plt.colorbar()
+            plt.imshow(out_unormed, vmax=vmax, vmin=vmin)
+            # plt.colorbar()
             plt.gca().axis('off')
             plt.subplot(255)
             # plt.title('Residue')
-            plt.imshow(residue_unormed)
-            plt.colorbar()
+            plt.imshow(residue_unormed, vmax=vmax, vmin=vmin)
+            # plt.colorbar()
             plt.gca().axis('off')
 
             # Second row
@@ -542,40 +581,57 @@ class network(object):
         print("Image_t0_idx: {}, Image_t1_idx: {}, label_idx: {}".format(info_dict["img1_idx"], info_dict["img2_idx"], info_dict["label_idx"]))
         print("Residue sum: ", np.sum(np.abs(residue_unormed)))
         print("Original diff: ", np.sum(np.abs(original_diff)))
-        print("PSNR: ", psnr(pick(label), (np.asarray(out_unormed) + 0.5), 1))
+        print("PSNR: ", psnr(pick(label), (np.clip(np.asarray(out_unormed), 0, None)), self.max_p))
         plt.show()
+
+
+    def mean_psnr(self, var=1):
+        '''
+        Calculate the mean psnr in a dataset
+        '''
+        pick = chan(var)
+        self.batch_size = 1
+        self.load_data()
+        self.load_model_or_checkpoint()
+        self.criterion = MSELoss().to(self.device)
+        self.model.eval()
+        sum_psnr = 0
+        mean, std = self.mean[var], self.std[var]
+
+        with torch.no_grad():
+            for b_id, (i0, i1, label) in enumerate(self.valid_loader):
+                label, _i0, _i1 = label.to(self.device, non_blocking = self.non_blocking), i0.to(self.device, non_blocking = self.non_blocking), i1.to(self.device, non_blocking = self.non_blocking)
+                # Only cut i1 for err calc
+                i1_crop = _i1[:,:,self.ltl[0]:self.lbr[0],self.ltl[1]:self.lbr[1]]
+                # Concatenate two input imgs in NCHW format
+                duo = torch.cat([_i0, _i1], dim=1)
+                duo = torch.reshape(duo, (label.shape[0], 8*self.crop_size[0], 1, -1))
+                output = self.model(duo)
+                output = torch.reshape(output, (label.shape[0], 4, self.label_size[0], -1))
+                faked = output + i1_crop
+                loss = self.criterion(faked, label)
+                faked = faked[0]
+                label = label[0]
+                out_unormed = pick(np.transpose(faked.numpy(), (1, 2, 0))) * std + mean
+                label_unormed = pick(np.transpose(label.numpy(), (1, 2, 0))) * std + mean
+                _psnr = psnr(label_unormed, (np.clip(np.asarray(out_unormed), 0, None)), self.max_p)
+                print(b_id, _psnr)
+                sum_psnr += _psnr
+
+        print("Mean psnr on dataset {}: {}".format(self.va_data_dir, sum_psnr / len(self.data_va)))
 
 
     def setup(self):
         '''
         Set up network for evaluation only
         '''
-        self.mean, self.std = get_stats(self.tr_data_dir, self.va_data_dir, self.nvar)
+        self.mean, self.std, self.max_p = get_stats(self.tr_data_dir, Path("D:/sigma_data/data_logpolar_resized32_va_without test.h5"), self.nvar)
+        print("Global max pixel value: {}".format(self.max_p))
         self.norm = Normalize(self.mean, self.std)
         self.pad = transforms.Compose([CustomPad((math.ceil((self.crop_size[1] - self.label_size[1])/2), 0, math.ceil((self.crop_size[1] - self.label_size[1])/2), 0), 'circular')])
         self.to_tensor = ToTensor()
-        # Load network to cpu
-        device = torch.device('cpu')
 
-        if Path(self.model_dir).exists():
-            self.load(map_location=device)
-        elif Path(self.checkpoint).exists():
-            print("Model file does not exists, trying checkpoint")
-
-            if self.arch == 'resnet':
-                self.model = ResNet().to(device)
-            if self.arch == 'unet':
-                self.model = UNet().to(device)
-            if self.arch == 'unet2':
-                self.model = UNet2().to(device)
-            print("Using {}".format(self.arch))
-
-            self.optimizer = optim.Adam(self.model.parameters(), lr=self.lr)
-            self.load_checkpoint()
-        else:
-            print("No model.pth or checkpoint.tar found, exiting.")
-            exit(1)
-
+        self.load_model_or_checkpoint()
         self.model.eval()
 
 
