@@ -63,6 +63,7 @@ def save_to_h5(config, polar = False, size = None, trva=None):
     if trva:
         out_tr = h5py.File(Path(str(h5_dir) + "_tr.h5"))
         out_va = h5py.File(Path(str(h5_dir) + "_va.h5"))
+        out_te = h5py.File(Path(str(h5_dir) + "_te.h5"))
     else:
         h5_fout = h5py.File(h5_dir.with_suffix('.h5'))
 
@@ -85,8 +86,10 @@ def save_to_h5(config, polar = False, size = None, trva=None):
         if trva:
             disk_grp_tr = out_tr.create_group(fo_name)
             disk_grp_va = out_va.create_group(fo_name)
+            disk_grp_te = out_te.create_group(fo_name)
             disk_grp_tr["log_grid"] = log_grid
             disk_grp_va["log_grid"] = log_grid
+            disk_grp_te["log_grid"] = log_grid
         else:
             disk_grp = h5_fout.create_group(fo_name)
             disk_grp["log_grid"] = log_grid
@@ -96,13 +99,15 @@ def save_to_h5(config, polar = False, size = None, trva=None):
             # Assume even for train, odd for validation
             f_len = len(f_names)
             
-            # f_names_tr = list(map(f_names.__getitem__, list(range(0, f_len, 2))))
-            # f_names_va = list(map(f_names.__getitem__, list(range(1, f_len, 2))))
+            f_names_tr = list(map(f_names.__getitem__, list(range(0, f_len, 2))))
+            f_names_va = list(map(f_names.__getitem__, list(range(1, f_len, 2))))
+            f_names_te = f_names_va[int(len(f_names_va) / 2):]
+            f_names_va = f_names_va[:int(len(f_names_va) / 2)]
             
             # Assume split data with given validation percentage
-            split = int(f_len * (1 - config.valid_size))
-            f_names_tr = f_names[:split]
-            f_names_va = f_names[split:]
+            # split = int(f_len * (1 - config.valid_size))
+            # f_names_tr = f_names[:split]
+            # f_names_va = f_names[split:]
             
             # Write to tr/va files
             for j, f in enumerate(f_names_tr):
@@ -122,6 +127,15 @@ def save_to_h5(config, polar = False, size = None, trva=None):
                 if size:
                     data = resize(data)
                 disk_grp_va[str(j)] = data
+
+            for j, f in enumerate(f_names_te):
+                print("te", j)
+                data = load_from_binary(f, log_grid, nvar, polar)
+                if polar:
+                    data = toPolar(log_grid, data)
+                if size:
+                    data = resize(data)
+                disk_grp_te[str(j)] = data
         else:
             for j, f in enumerate(f_names):
                 print(j)
@@ -270,6 +284,7 @@ def get_stats(h5_dir_tr, h5_dir_va, n_chan, verbose=False):
     Get dataset stats
     '''
     n = 0
+    _max = 0
     _sum = np.zeros(n_chan)
     sum_minus_mean_square = np.zeros(n_chan)
 
@@ -281,6 +296,7 @@ def get_stats(h5_dir_tr, h5_dir_va, n_chan, verbose=False):
             d_step = len(disk_data.keys()) - 1
             for d_step in range(d_step):
                 img = np.array(disk_data[str(d_step)])
+                _max = max(_max, np.amax(img[:,:,1]))
                 _sum += np.sum(np.sum(img, axis=0), axis=0)
                 h, w = img.shape[:-1]
                 n += h * w
@@ -305,10 +321,10 @@ def get_stats(h5_dir_tr, h5_dir_va, n_chan, verbose=False):
         for chan in range(n_chan):
             print("Channel{} mean: {}, std: {}".format(chan, mean[chan], std[chan]))
 
-    return mean, std
+    return mean, std, _max
 
 
-def make_video():
+def make_video(fps=5):
     '''
     Make video out of frames
     ''' 
@@ -318,7 +334,7 @@ def make_video():
     images = [img for img in os.listdir(image_folder) if img.endswith(".png")]
     frame = cv2.imread(os.path.join(image_folder, images[0]))
     height, width, layers = frame.shape
-    video = cv2.VideoWriter(video_name, 0, 8, (width,height))
+    video = cv2.VideoWriter(video_name, 0, fps, (width, height))
     for i in range(len(images)):
         video.write(cv2.imread(os.path.join(image_folder, str(i) + '.png')))
 
@@ -326,7 +342,26 @@ def make_video():
     video.release()
 
 
-def get_frames(solver, data_dir, d_name='sigma_data', frames_path='./frames/', var=1, polar=True, mode='inter'):
+def flood(solver, lst, n_to_extra):
+    '''
+    Extrapolate recursively
+    solver: solver gives the interpolation or extrapolation result
+    lst: extrapolated frame list
+    n_to_extra: number of frames to extrapolate
+    '''
+    if n_to_extra == 0:
+        return
+
+    i0 = lst[-2]
+    i1 = lst[-1]
+    i2 = solver(i0, i1)
+    lst.append(i2)
+    flood(solver, lst, n_to_extra - 1)
+
+    return lst
+
+
+def get_frames(solver, data_dir, d_name='sigma_data', frames_path='./frames/', var=1, polar=False, mode=None, start_frame=0, size=None):
     '''
     Turn image data to frames
     solver: solver gives the interpolation or extrapolation result
@@ -348,29 +383,51 @@ def get_frames(solver, data_dir, d_name='sigma_data', frames_path='./frames/', v
     
     # Make gt frame list
     gt_frames, frames = [], []
-    for i in range(len(frame_ids)):
+    n_gt = len(frame_ids)
+    for i in range(n_gt):
         gt_frames.append(np.array(data_d[str(i)]))
 
-    # Interpolation
-    if mode == 'inter':
-        frames.append(gt_frames[0][:,:,var])
-        for i in range(len(gt_frames) - 1):
-            mid_frame = solver(gt_frames[i], gt_frames[i + 1], mode=0)
-            frames.extend([mid_frame[:,:,var], gt_frames[i + 1][:,:,var]])
+    if not mode:
+        frames = np.array(gt_frames)[start_frame:,:,:,var]
 
-        frames = np.array(frames)
-    # Extrpolation
     elif mode == 'extra':
-        raise NotImplementedError()
-    else: 
-        frames = np.array(gt_frames)[:,:,:,var]
+        frames = np.array(flood(solver, [gt_frames[start_frame], gt_frames[start_frame + 1]], n_gt - (2 + start_frame)))[:,:,:,var]
+        loss_per_frame = np.sum(np.abs(frames - np.array(gt_frames)[start_frame:,:,:,var]), axis=(1, 2))
+        n_pixel = frames[0].shape[0] * frames[0].shape[1]
+        print("Cummulative loss(per frame, per pixel)", loss_per_frame / n_pixel)
+        plt.plot(list(range(n_gt - start_frame)), loss_per_frame / n_pixel)
+        plt.yscale('log')
+        plt.ylabel('Cummulative Loss(Log scaled)')
+        plt.xlabel('Frame Index')
+        plt.show()
+
+    elif mode == 'inter':
+        # Interpolate or extrapolate 
+        frames.append(gt_frames[0])
+        for i in range(n_gt - 1):
+            print("{}%".format(i * 100.0 / (n_gt - 1)))
+            synthesized = solver(gt_frames[i], gt_frames[i + 1])
+            frames.extend([synthesized, gt_frames[i + 1]])
+
+        frames = np.array(frames)[:,:,var]
+
+    else:
+        raise ValueError("Mode must be either inter or extra.")
 
     #Prepare frames
-    _, ny = np.array(frames[0]).shape
+    ny = frames[0].shape[1]
     phi = (np.arange(0, ny) * 1.0 / ny + 0.5 / ny) * 2 * np.pi
+    vmax = np.amax(frames[0])
+    vmin = np.amin(frames[1])
+    if size:
+        resize = Resize(size)
 
     for frame_id in range(len(frames)):
+        # img = np.clip(frames[frame_id], vmin, vmax * (1.12614 ** (frame_id + 1)))
         img = frames[frame_id]
+        # print(np.amin(img), np.amax(img))
+        if size:
+            img = resize(img)
         path = frames_path + str(frame_id) + '.png'
         if polar:
             plt.subplot(1, 1, 1, projection='polar')
@@ -379,5 +436,5 @@ def get_frames(solver, data_dir, d_name='sigma_data', frames_path='./frames/', v
             plt.axis([0, 2 * np.pi, 0, 2])
             plt.savefig(path)
             plt.close()
-        else:
-            plt.imsave(path, img, vmin=np.amin(img), vmax=np.amax(img))
+            continue
+        plt.imsave(path, img, vmin=np.amin(img), vmax=np.amax(img))

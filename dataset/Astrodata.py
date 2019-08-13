@@ -13,7 +13,7 @@ class Astrodata(Dataset):
     Astro dataset class
     ''' 
 
-    def __init__(self, data_dir, min_step_diff=None, max_step_diff=None, transforms=None, verbose=False):
+    def __init__(self, data_dir, min_step_diff=None, max_step_diff=None, transforms=None, verbose=False, mode='inter'):
         '''
         transforms: transformations to apply on imgs
         data_dir: directory to .h5 file
@@ -46,6 +46,9 @@ class Astrodata(Dataset):
         self.max_step_diff = max_step_diff
         self.transforms = transforms
         self.verbose = verbose
+        self.mode = 'inter'
+        if mode:
+            self.mode = mode
 
         self.calc_valid_step_diffs()
         if not self.min_step_diff:
@@ -67,8 +70,13 @@ class Astrodata(Dataset):
         try:
             # Interpolation l=1, h=3, m=2, predict m
             # Extrapolation l=1, m=3, h=2, predict m
-            d, l_id, h_id, m_id = self.triplets[idx] # interpolation
-            # d, l_id, m_id, h_id = self.triplets[idx] # extrapolation
+            if self.mode == 'inter':
+                d, l_id, h_id, m_id = self.triplets[idx] # interpolation
+            elif self.mode == 'extra':
+                d, l_id, m_id, h_id = self.triplets[idx] # extrapolation
+            else:
+                raise ValueError(
+                    "Mode in Astro dataset can only be \'inter\' or \'extra\'")
         except IndexError:
             raise IndexError("Maximum index supported is {}".format(self.__len__()))
         # print(d, l, h, m)

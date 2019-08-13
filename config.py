@@ -23,7 +23,7 @@ sys_arg.add_argument("--min_step_diff", type=int,
                     help="None or an integer indicating min step difference")
 
 sys_arg.add_argument("--max_step_diff", type=int,
-                    default=None,
+                    default=2,
                     help="None or an integer indicating max step difference")
 
 sys_arg.add_argument("--batch_size", type=int,
@@ -52,7 +52,7 @@ sys_arg.add_argument("--crop_size", type=tuple,
                     # default=(80, 80), 
                     # default=(284, 284), # UNet4, label_size + 184
                     # default=(32, 72), # UNet2
-                    default=(64, 64),  # without randcrop
+                    default=(32, 544),  # without randcrop
                     # default=(32, 32), # with randcrop, ou2tput size will be smaller
                     # default=(24, 24), # evenn smaller patch
                     help='''Ramdom crop image size, tiling size.''')
@@ -85,8 +85,8 @@ sys_arg.add_argument("-m", type=str,
                     p: for preview''')
 
 sys_arg.add_argument("--data_dir", type=Path,
-                    # default='D:/sigma_data',
-                    default='/home/sht/data/sigma_data',
+                    default='D:/sigma_data',
+                    # default='/home/sht/data/sigma_data',
                     help="Directory to data folder")
 
 sys_arg.add_argument("--h5_dir_win", type=Path,

@@ -42,12 +42,16 @@ def psnr(orig, noisy, max_possible=1):
 
 class network(object):
     """docstring for network"""
-    def __init__(self, config):
+    def __init__(self, config, arch='resnet', mode='inter'):
         '''
         ltl: label top left pos on i1
         lbr: label bot right pos on i1
         '''
         super(network, self).__init__()
+        self.arch = arch
+        if self.arch not in ['resnet', 'unet2', 'unet']:
+            raise ValueError("Architecture not implemented.")
+        self.mode = mode
         self.checkpoint = "checkpoint.tar"
         self.model_dir = "model.pth"
         self.data_dir = str(config.h5_dir_linux)
@@ -76,17 +80,18 @@ class network(object):
             self.pin_memory = False
             self.valid_required = True
             self.data_dir = str(config.h5_dir_win)
-            self.batch_size = 1
-            self.epochs = 1
-            self.min_step_diff = 72
+            self.batch_size = 10
+            self.epochs = 20050
+            self.min_step_diff = None
+            self.max_step_diff = 2
             self.num_workers = 0
             self.report_freq = 1
-            self.checkpoint_freq = 1
+            self.checkpoint_freq = 200
             self.lr = 0.000001
 
         # Inferenced parameter
         self.tr_data_dir = Path(self.data_dir + "_tr.h5")
-        self.va_data_dir = Path(self.data_dir + "_va.h5")
+        self.va_data_dir = Path(self.data_dir + "_te.h5")
         # Sizes to crop the input img
         self.ltl = (int(0.5 * (self.crop_size[0] - self.label_size[0])), int(0.5 * (self.crop_size[1] - self.label_size[1])))
         self.lbr = (self.ltl[0] + self.label_size[0], self.ltl[1] + self.label_size[1])
@@ -105,7 +110,7 @@ class network(object):
         '''
         Prepare train/test data
         '''
-        mean, std = get_stats(self.tr_data_dir, self.va_data_dir, self.nvar)
+        self.mean, self.std, self.max_p = get_stats(self.tr_data_dir, Path("D:/sigma_data/data_logpolar_resized32_va_without test.h5"), self.nvar)
         trans = [
                  # For Cropped input
                  # Crop((0, 0), (440, 1024)), # should be 439x1024
@@ -123,7 +128,7 @@ class network(object):
                  CustomPad((math.ceil((self.crop_size[1] - self.label_size[1])/2), 0, math.ceil((self.crop_size[1] - self.label_size[1])/2), 0), 'circular'), 
                  CustomPad((0, math.ceil((self.crop_size[0] - self.label_size[0])/2), 0, math.ceil((self.crop_size[0] - self.label_size[0])/2)), 'edge'), 
                  GroupRandomCrop(self.crop_size, label_size=self.label_size), 
-                 Normalize(mean, std),
+                 Normalize(self.mean, self.std),
                  ToTensor()
 
                  # transforms.ToPILImage(), 
@@ -136,12 +141,14 @@ class network(object):
         self.data_tr = Astrodata(self.tr_data_dir, 
                             min_step_diff = self.min_step_diff, 
                             max_step_diff = self.max_step_diff,
-                            transforms = trans) # RandomCrop is group op
+                            transforms = trans, 
+                            mode = self.mode) # RandomCrop is group op
 
         self.data_va = Astrodata(self.va_data_dir, 
                             min_step_diff = self.min_step_diff, 
                             max_step_diff = self.max_step_diff, 
-                            transforms = trans) # RandomCrop is group op
+                            transforms = trans, 
+                            mode = self.mode) # RandomCrop is group op
         # Randomly shuffle and split data to train/valid
         # np.random.seed(1234)
         # indices = list(range(len(data)))
@@ -179,9 +186,13 @@ class network(object):
 
         # import IPython
         # IPython.embed()
-        self.model = ResNet().to(self.device)
-        # self.model = UNet().to(self.device)
-        # self.model = UNet2().to(self.device)
+        if self.arch == 'resnet':
+            self.model = ResNet().to(self.device)
+        if self.arch == 'unet':
+            self.model = UNet().to(self.device)
+        if self.arch == 'unet2':
+            self.model = UNet2().to(self.device)
+
         self.optimizer = optim.Adam(self.model.parameters(), lr=self.lr)
         # self.scheduler = optim.lr_scheduler.MultiStepLR(self.optimizer, milestones=[400], gamma=0.5)
         self.criterion = MSELoss().to(self.device) # set reduction=sum, or too smal to see
@@ -204,11 +215,8 @@ class network(object):
             duo = torch.cat([_i0, _i1], dim=1)
             self.optimizer.zero_grad()
             output = self.model(duo)
-            # loss = self.criterion(output + i1_crop, label)
-
-            # Loss = mean(MSE(I, I_gt)) + alpha * (mean(MSE(dI_x, dI_xgt)) + mean(MSE(dI_y, dI_ygt)))
-            output = output + i1_crop
-            loss = self.criterion(output, label) + 0.1 * self.criterion(output[:,:,:,1:] - output[:,:,:,:-1], label[:,:,:,1:] - label[:,:,:,:-1])
+            output = torch.reshape(output, (label.shape[0], 4, self.label_size[0], -1))
+            loss = self.criterion(output + i1_crop, label)
 
             loss.backward()
             self.optimizer.step()
@@ -238,9 +246,8 @@ class network(object):
                 # Concatenate two input imgs in NCHW format
                 duo = torch.cat([_i0, _i1], dim=1)
                 output = self.model(duo)
-                # loss = self.criterion(output + i1_crop, label)
-                output = output + i1_crop
-                loss = self.criterion(output, label) + 0.1 * self.criterion(output[:,:,:,1:] - output[:,:,:,:-1], label[:,:,:,1:] - label[:,:,:,:-1])
+                output = torch.reshape(output, (label.shape[0], 4, self.label_size[0], -1))
+                loss = self.criterion(output + i1_crop, label)
                 
                 valid_loss += loss.item()
                 n_batch += 1
@@ -249,11 +256,27 @@ class network(object):
         return valid_loss / n_batch
 
 
+    def print_arch(self):
+        '''
+        Print current model architecture
+        '''
+        print("======== Model ========")
+        model_parameters = filter(lambda p: p.requires_grad, self.model.parameters())
+        params = sum([np.prod(p.size()) for p in model_parameters])
+        print("Number of network parameters: ", params)
+        tensor_list = list(self.model.state_dict().items())
+        for layer_tensor_name, tensor in tensor_list:
+            print('Layer {}: {} elements'.format(layer_tensor_name, torch.numel(tensor)))
+
+        print()
+
+
     def load_checkpoint(self):
         '''
         Load the model from checkpoing
         '''
         checkpoint = torch.load(self.checkpoint)
+        self.print_arch()
         self.model.load_state_dict(checkpoint['model_state_dict'])
         self.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
         epoch = checkpoint['epoch']
@@ -275,6 +298,34 @@ class network(object):
             'optimizer_state_dict': self.optimizer.state_dict()
             }, self.checkpoint)
         print("Checkpoint saved")
+
+
+    def load_model_or_checkpoint(self):
+        '''
+        Load checkpoint or model if any exists
+        '''
+
+        # Load network to cpu
+        self.device = torch.device('cpu')
+
+        if Path(self.model_dir).exists():
+            self.load(map_location=self.device)
+        elif Path(self.checkpoint).exists():
+            print("Model file does not exists, trying checkpoint")
+
+            if self.arch == 'resnet':
+                self.model = ResNet().to(self.device)
+            if self.arch == 'unet':
+                self.model = UNet().to(self.device)
+            if self.arch == 'unet2':
+                self.model = UNet2().to(self.device)
+            print("Using {}".format(self.arch))
+
+            self.optimizer = optim.Adam(self.model.parameters(), lr=self.lr)
+            self.load_checkpoint()
+        else:
+            print("No model.pth or checkpoint.tar found, exiting.")
+            exit(1)
 
 
     def load(self, **kwargs):
@@ -302,12 +353,8 @@ class network(object):
         self.load_data()
         self.load_writer()
 
-        model_parameters = filter(lambda p: p.requires_grad, self.model.parameters())
-        params = sum([np.prod(p.size()) for p in model_parameters])
-        print("Number of network parameters: ", params)
-        tensor_list = list(self.model.state_dict().items())
-        for layer_tensor_name, tensor in tensor_list:
-            print('Layer {}: {} elements'.format(layer_tensor_name, torch.numel(tensor)))
+
+        self.print_arch()
 
         # Construct network grgh
         # sample_input=(torch.rand(1, 8, self.crop_size[0], self.crop_size[1]))
@@ -327,14 +374,14 @@ class network(object):
             # self.scheduler.step(epoch)
             print("\n===> epoch: {}/{}".format(epoch, self.epochs))
             train_result = self.train()
-            print("Epoch {} loss: {:.4f}".format(epoch, train_result))
+            print("Epoch {} loss: {}".format(epoch, train_result))
             # test_result = self.test()
             if epoch % self.report_freq == 0:
                 if self.valid_required:
                     self.model.eval()
                     valid_result = self.valid()
                     self.writer.add_scalar('Valid/Loss', valid_result, self.step)
-                    print("Validation loss: {:.4f}".format(valid_result))
+                    print("Validation loss: {}".format(valid_result))
                 self.writer.add_scalar('Train/Loss', train_result, self.step)
                 self.model.train()
             # if epoch % 10 == 0:
@@ -374,12 +421,14 @@ class network(object):
         data_tr = Astrodata(self.tr_data_dir, 
                             min_step_diff = self.min_step_diff, 
                             max_step_diff = self.max_step_diff, 
-                            verbose = True) # RandomCrop is group op
+                            verbose = True, 
+                            mode = self.mode) # RandomCrop is group op
 
         data_va = Astrodata(self.va_data_dir, 
                             min_step_diff = self.min_step_diff, 
                             max_step_diff = self.max_step_diff, 
-                            verbose = True) # RandomCrop is group op
+                            verbose = True, 
+                            mode = self.mode) # RandomCrop is group op
 
         # Randomly choose triplet if not given
         if not triplet_id and triplet_id != 0:
@@ -430,62 +479,80 @@ class network(object):
         out_unormed = pick(out) * std + mean
         residue_unormed = np.array(out_unormed) - pick(label)
         original_diff = pick(i0 - label)
+        vmax = np.amax(pick(i0))
+        vmin = np.amin(pick(i0))
         # plt.figure(figsize=(20, 4), dpi=200) # default dpi 6.4, 4.8
         if audience == 'normal':
             plt.subplot(251)
-            plt.title('i0')
-            plt.imshow(pick(i0))
-            plt.colorbar()
+            # plt.title('i0')
+            plt.imshow(pick(i0), vmax=vmax, vmin=vmin)
+            # plt.colorbar()
+            plt.gca().axis('off')
             plt.subplot(252)
-            plt.title('i1')
-            plt.imshow(pick(i1))
-            plt.colorbar()
+            # plt.title('i1')
+            plt.imshow(pick(i1), vmax=vmax, vmin=vmin)
+            # plt.colorbar()
+            plt.gca().axis('off')
             plt.subplot(253)
-            plt.title('GT')
-            plt.imshow(pick(label)) 
-            plt.colorbar() 
+            # plt.title('GT')
+            plt.imshow(pick(label), vmax=vmax, vmin=vmin) 
+            # plt.colorbar() 
+            plt.gca().axis('off')
             plt.subplot(254)
-            plt.title('Out')
-            plt.imshow(out_unormed)
-            plt.colorbar()
+            # plt.title('Out')
+            plt.imshow(out_unormed, vmax=vmax, vmin=vmin)
+            # plt.colorbar()
+            plt.gca().axis('off')
             plt.subplot(255)
-            plt.title('Residue')
-            plt.imshow(residue_unormed)
-            plt.colorbar()
+            # plt.title('Residue')
+            plt.imshow(residue_unormed, vmax=vmax, vmin=vmin)
+            # plt.colorbar()
+            plt.gca().axis('off')
+
             # Second row
+            vmax_normed = torch.max(pick(i0_normed))
+            vmin_normed = torch.min(pick(i0_normed))
             plt.subplot(256)
-            plt.title('i0_normed')
-            plt.imshow(pick(i0_normed))
-            plt.colorbar()
+            # plt.title('i0_normed')
+            plt.imshow(pick(i0_normed), vmax=vmax_normed, vmin=vmin_normed)
+            # plt.colorbar()
+            plt.gca().axis('off')
             plt.subplot(257)
-            plt.title('i1_normed')
-            plt.imshow(pick(i1_normed))
-            plt.colorbar()
+            # plt.title('i1_normed')
+            plt.imshow(pick(i1_normed), vmax=vmax_normed, vmin=vmin_normed)
+            # plt.colorbar()
+            plt.gca().axis('off')
             plt.subplot(258)
-            plt.title('GT_normed')
-            plt.imshow(pick(label_normed))
-            plt.colorbar()
+            # plt.title('GT_normed')
+            plt.imshow(pick(label_normed), vmax=vmax_normed, vmin=vmin_normed)
+            # plt.colorbar()
+            plt.gca().axis('off')
             plt.subplot(259)
-            plt.title('Out_normed')
-            plt.imshow(pick(out))
-            plt.colorbar()
+            # plt.title('Out_normed')
+            plt.imshow(pick(out), vmax=vmax_normed, vmin=vmin_normed)
+            # plt.colorbar()
+            plt.gca().axis('off')
             plt.subplot(2, 5, 10)
-            plt.title('Residue_normed')
-            plt.imshow(pick(residue))
-            plt.colorbar()
+            # plt.title('Residue_normed')
+            plt.imshow(pick(residue), vmax=vmax_normed, vmin=vmin_normed)
+            # plt.colorbar()
+            plt.gca().axis('off')
         elif audience == 'pipeline':
             plt.subplot(131)
             plt.title('i0_padded')
             plt.imshow(pick(i0_padded))
             plt.colorbar()
+            plt.gca().axis('off')
             plt.subplot(132)
             plt.title('i1_padded')
             plt.imshow(pick(i1_padded))
             plt.colorbar()
+            plt.gca().axis('off')
             plt.subplot(133)
             plt.title('Network_immediate_output')
             plt.imshow(pick(output[0]))
             plt.colorbar()
+            plt.gca().axis('off')
         else:
             raise ValueError("Unknown audience")
 
@@ -506,42 +573,66 @@ class network(object):
         print("Image_t0_idx: {}, Image_t1_idx: {}, label_idx: {}".format(info_dict["img1_idx"], info_dict["img2_idx"], info_dict["label_idx"]))
         print("Residue sum: ", np.sum(np.abs(residue_unormed)))
         print("Original diff: ", np.sum(np.abs(original_diff)))
-        print("PSNR: ", psnr(pick(label), (np.asarray(out_unormed) + 0.5), 1))
+        print("PSNR: ", psnr(pick(label), (np.clip(np.asarray(out_unormed), 0, None)), self.max_p))
         plt.show()
+
+
+    def mean_psnr(self, var=1):
+        '''
+        Calculate the mean psnr in a dataset
+        '''
+        pick = chan(var)
+        self.batch_size = 1
+        self.load_data()
+        self.load_model_or_checkpoint()
+        self.criterion = MSELoss().to(self.device)
+        self.model.eval()
+        sum_psnr = 0
+        mean, std = self.mean[var], self.std[var]
+
+        with torch.no_grad():
+            for b_id, (i0, i1, label) in enumerate(self.valid_loader):
+                label, _i0, _i1 = label.to(self.device, non_blocking = self.non_blocking), i0.to(self.device, non_blocking = self.non_blocking), i1.to(self.device, non_blocking = self.non_blocking)
+                # Only cut i1 for err calc
+                i1_crop = _i1[:,:,self.ltl[0]:self.lbr[0],self.ltl[1]:self.lbr[1]]
+                # Concatenate two input imgs in NCHW format
+                duo = torch.cat([_i0, _i1], dim=1)
+                duo = torch.reshape(duo, (label.shape[0], 8*self.crop_size[0], 1, -1))
+                output = self.model(duo)
+                output = torch.reshape(output, (label.shape[0], 4, self.label_size[0], -1))
+                faked = output + i1_crop
+                loss = self.criterion(faked, label)
+                faked = faked[0]
+                label = label[0]
+                out_unormed = pick(np.transpose(faked.numpy(), (1, 2, 0))) * std + mean
+                label_unormed = pick(np.transpose(label.numpy(), (1, 2, 0))) * std + mean
+                _psnr = psnr(label_unormed, (np.clip(np.asarray(out_unormed), 0, None)), self.max_p)
+                print(b_id, _psnr)
+                sum_psnr += _psnr
+
+        print("Mean psnr on dataset {}: {}".format(self.va_data_dir, sum_psnr / len(self.data_va)))
 
 
     def setup(self):
         '''
-        Set up network for interpolation/extrapolation/test_single
+        Set up network for evaluation only
         '''
-        self.mean, self.std = get_stats(self.tr_data_dir, self.va_data_dir, self.nvar)
+        self.mean, self.std, self.max_p = get_stats(self.tr_data_dir, Path("D:/sigma_data/data_logpolar_resized32_va_without test.h5"), self.nvar)
+        print("Global max pixel value: {}".format(self.max_p))
         self.norm = Normalize(self.mean, self.std)
         self.pad = transforms.Compose([CustomPad((math.ceil((self.crop_size[1] - self.label_size[1])/2), 0, math.ceil((self.crop_size[1] - self.label_size[1])/2), 0), 'circular')])
         self.to_tensor = ToTensor()
-        # Load network to cpu
-        device = torch.device('cpu')
-        if Path(self.model_dir).exists():
-            self.load(map_location=device)
-        elif Path(self.checkpoint).exists():
-            print("Model file does not exists, trying checkpoint")
-            self.model = ResNet().to(device)
-            # self.model = UNet().to(device)
-            # self.model = UNet2().to(device)
-            self.optimizer = optim.Adam(self.model.parameters(), lr=self.lr)
-            self.load_checkpoint()
-        else:
-            print("No model.pth or checkpoint.tar found, exiting.")
-            exit(1)
 
+        self.load_model_or_checkpoint()
         self.model.eval()
 
 
-    def solve(self, i0, i1, mode=0):
+    def solve(self, i0, i1):
         '''
-        Frame Interpolation
+        Frame Interpolation or extrapolation, depending
+        on the given checkpoint.tar or model.pth
         i0, i1: 2 ndarray frames
         return: interpolation result
-        mode: 0 for interpolation, 1 for extrapolation
         '''
         i0_normed = self.norm(np.array(i0))
         i1_normed = self.norm(np.array(i1))
@@ -558,8 +649,13 @@ class network(object):
             output = self.model(duo)
             output = torch.reshape(output, (1, 4, self.label_size[0], -1))
             out = output[0] + i1_normed
+            out = np.transpose(out.numpy(), (1, 2, 0))
 
-        return np.transpose(out.numpy(), (1, 2, 0))
+        # Unormalize
+        out = np.multiply(np.reshape(out, (out.shape[0] * out.shape[1], -1)), self.std) + self.mean
+        out = np.reshape(out, (i0.shape[0], i1.shape[1], -1))
+        
+        return out
 
 
     def clean_up(self):

@@ -81,7 +81,7 @@ class Resize(object):
     Resize ndarray to target size
     Take ndarray as input
     '''
-    def __init__(self, size, interpolation=cv2.INTER_LINEAR):
+    def __init__(self, size, interpolation=cv2.INTER_NEAREST):
         '''
         size: HxW
         '''

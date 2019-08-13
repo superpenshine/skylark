@@ -31,9 +31,11 @@ def main():
     # network = nn(config)
     # network.load_img_on_tb(data, grid)
 
-    solver = network(config)
+    solver = network(config, arch='resnet', mode='extra')
     if config.m == 'v':
-        solver.test_single(triplet_id=0, step_diff=(74, None), dataset='tr', audience='normal', var=1) # set min step diff to make the input fixed
+        solver.test_single(triplet_id=0, step_diff=(None, 2), dataset='te', audience='normal', var=1) # set min step diff to make the input fixed
+    elif config.m == 'psnr':
+        solver.mean_psnr(var=1)
     elif config.m == 'save':
         save_to_h5(config, trva=True, polar=False, size=config.input_size)
     elif config.m == 'stats':
@@ -44,11 +46,11 @@ def main():
         data, grid = load(str("D:/sigma_data/data_logpolar") + "_tr.h5", "sigma_data", 60)
         preview(data, grid, polar=True)
     elif config.m == 'a':
-        make_video()
+        make_video(fps=5)
     elif config.m == 'frame':
         solver.setup()
         # get_frames(solver.solve, str(config.h5_dir_win) + "_tr.h5", d_name='sigma_data', var=1, mode='inter')
-        get_frames(solver.solve, 'D:/sigma_data/data_logpolar_tr.h5', d_name='sigma_data', var=1, mode='inter')
+        get_frames(solver.solve, 'D:/sigma_data/data_logpolar_resized32_va.h5', d_name='sigma_data', var=1, mode='extra', polar=False, start_frame=0, size=(512, 512))
     elif config.m == 'sanity':
         solver.sanity_check_regular_loss()
         # solver.sanity_check_randcrop_interpo_loss()
