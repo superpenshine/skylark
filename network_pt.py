@@ -80,7 +80,7 @@ class network(object):
             self.pin_memory = False
             self.valid_required = True
             self.data_dir = str(config.h5_dir_win)
-            self.batch_size = 10
+            self.batch_size = 1
             self.epochs = 20050
             self.min_step_diff = None
             self.max_step_diff = 2
@@ -91,7 +91,7 @@ class network(object):
 
         # Inferenced parameter
         self.tr_data_dir = Path(self.data_dir + "_tr.h5")
-        self.va_data_dir = Path(self.data_dir + "_te.h5")
+        self.va_data_dir = Path(self.data_dir + "_va.h5")
         # Sizes to crop the input img
         self.ltl = (int(0.5 * (self.crop_size[0] - self.label_size[0])), int(0.5 * (self.crop_size[1] - self.label_size[1])))
         self.lbr = (self.ltl[0] + self.label_size[0], self.ltl[1] + self.label_size[1])
@@ -215,7 +215,6 @@ class network(object):
             duo = torch.cat([_i0, _i1], dim=1)
             self.optimizer.zero_grad()
             output = self.model(duo)
-            output = torch.reshape(output, (label.shape[0], 4, self.label_size[0], -1))
             loss = self.criterion(output + i1_crop, label)
 
             loss.backward()
@@ -246,7 +245,6 @@ class network(object):
                 # Concatenate two input imgs in NCHW format
                 duo = torch.cat([_i0, _i1], dim=1)
                 output = self.model(duo)
-                output = torch.reshape(output, (label.shape[0], 4, self.label_size[0], -1))
                 loss = self.criterion(output + i1_crop, label)
                 
                 valid_loss += loss.item()
