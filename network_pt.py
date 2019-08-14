@@ -110,7 +110,7 @@ class network(object):
         '''
         Prepare train/test data
         '''
-        self.mean, self.std, self.max_p = get_stats(self.tr_data_dir, Path("D:/sigma_data/data_logpolar_resized32_va_without test.h5"), self.nvar)
+        self.mean, self.std, self.max_p = get_stats(self.tr_data_dir, self.va_data_dir, self.nvar)
         trans = [
                  # For Cropped input
                  # Crop((0, 0), (440, 1024)), # should be 439x1024

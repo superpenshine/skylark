@@ -27,7 +27,7 @@ sys_arg.add_argument("--max_step_diff", type=int,
                     help="None or an integer indicating max step difference")
 
 sys_arg.add_argument("--batch_size", type=int,
-                    default=10,
+                    default=5,
                     help="Batch size")
 
 sys_arg.add_argument("--lr", type=float,
@@ -39,7 +39,7 @@ sys_arg.add_argument("--epochs", type=int,
                     help="Number of epochs")
 
 sys_arg.add_argument("--num_workers", type=int,
-                    default=8,
+                    default=0,
                     help="Number of dataloader workers")
 
 sys_arg.add_argument("--input_size", type=tuple, 
@@ -52,7 +52,7 @@ sys_arg.add_argument("--crop_size", type=tuple,
                     # default=(80, 80), 
                     # default=(284, 284), # UNet4, label_size + 184
                     # default=(32, 72), # UNet2
-                    default=(64, 544),  # without randcrop
+                    default=(64, 320),  # without randcrop
                     # default=(32, 32), # with randcrop, ou2tput size will be smaller
                     # default=(24, 24), # evenn smaller patch
                     help='''Ramdom crop image size, tiling size.''')
@@ -66,7 +66,7 @@ sys_arg.add_argument("--label_size", type=tuple,
                     help="Label image size, this is related to network model")
 
 sys_arg.add_argument("--checkpoint_freq", type=int, 
-                    default=20, 
+                    default=5, 
                     help="Number of epochs between each checkpoint")
 
 sys_arg.add_argument("--report_freq", type=int, 
