@@ -13,7 +13,7 @@ def crop_position(res_shp, main_shp):
 
     return tl, br
 
-def ConvBlock(fan_in, fan_out, stride=1, bias=False, kernel=(3, 33)):
+def ConvBlock(fan_in, fan_out, stride=1, bias=False, kernel=(1, 33)):
     '''
     3x3 convolution with padding
     '''

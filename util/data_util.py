@@ -219,7 +219,18 @@ def preview(data, log_grid, polar = False, var = 1):
         plt.pcolormesh(rp1, rp2, data[:,:,var])
         plt.axis([0, 2*np.pi, 0, 2])
     else:
-        plt.imshow(data[:,:,var])
+        # resize = Resize((32, 32))
+        # data = resize(data)
+        # plt.imshow(data[:,:,var])
+
+        resize = Resize((32, 32))
+        data = resize(data)
+        data = data[:,:,1:2]
+        data = np.transpose(data, (2, 0, 1))
+        # import pdb
+        # pdb.set_trace()
+        data = np.reshape(data, (1*data.shape[1], 1, data.shape[2]))
+        plt.imshow(data[10])
 
     plt.colorbar()
     plt.show()
@@ -324,19 +335,44 @@ def get_stats(h5_dir_tr, h5_dir_va, n_chan, verbose=False):
     return mean, std, _max
 
 
-def make_video(fps=5):
+def make_video(fps=5, image_folder='./frames', video_name = 'video.avi'):
     '''
     Make video out of frames
     ''' 
-    image_folder = './frames'
-    video_name = 'video.avi'
-
     images = [img for img in os.listdir(image_folder) if img.endswith(".png")]
     frame = cv2.imread(os.path.join(image_folder, images[0]))
     height, width, layers = frame.shape
     video = cv2.VideoWriter(video_name, 0, fps, (width, height))
     for i in range(len(images)):
         video.write(cv2.imread(os.path.join(image_folder, str(i) + '.png')))
+
+    cv2.destroyAllWindows()
+    video.release()
+
+
+def make_dual_video(fps=5, image_folder=('./frames_trgt_round', './frames_tr0_round'), video_name = 'video.avi', stack=1):
+    '''
+    Make video out of frames
+    stack: 0 for vertical, 1 for horizontal
+    ''' 
+    folder1, folder2 = image_folder[0], image_folder[1]
+    images1 = [img for img in os.listdir(folder1) if img.endswith(".png")]
+    images2 = [img for img in os.listdir(folder2) if img.endswith(".png")]
+    frame1 = cv2.imread(os.path.join(folder1, images1[0]))
+    frame2 = cv2.imread(os.path.join(folder2, images2[0]))
+    hw = list(frame1.shape[:2])
+    hw[stack] += frame2.shape[stack]
+    video = cv2.VideoWriter(video_name, 0, fps, (hw[1], hw[0]))
+    for i in range(min(len(images1), len(images2))):
+        frame1 = cv2.imread(os.path.join(folder1, str(i) + '.png'))
+        frame2 = cv2.imread(os.path.join(folder2, str(i) + '.png'))
+        frame = np.concatenate((frame1, frame2), axis=stack)
+        # plt.subplot(111)
+        # plt.imshow(frame1)
+        # plt.show()
+        # import pdb
+        # pdb.set_trace()
+        video.write(frame)
 
     cv2.destroyAllWindows()
     video.release()
@@ -395,11 +431,11 @@ def get_frames(solver, data_dir, d_name='sigma_data', frames_path='./frames/', v
         loss_per_frame = np.sum(np.abs(frames - np.array(gt_frames)[start_frame:,:,:,var]), axis=(1, 2))
         n_pixel = frames[0].shape[0] * frames[0].shape[1]
         print("Cummulative loss(per frame, per pixel)", loss_per_frame / n_pixel)
-        plt.plot(list(range(n_gt - start_frame)), loss_per_frame / n_pixel)
-        plt.yscale('log')
-        plt.ylabel('Cummulative Loss(Log scaled)')
-        plt.xlabel('Frame Index')
-        plt.show()
+        # plt.plot(list(range(n_gt - start_frame)), loss_per_frame / n_pixel)
+        # plt.yscale('log')
+        # plt.ylabel('Cummulative Loss(Log scaled)')
+        # plt.xlabel('Frame Index')
+        # plt.show()
 
     elif mode == 'inter':
         # Interpolate or extrapolate 
@@ -415,7 +451,8 @@ def get_frames(solver, data_dir, d_name='sigma_data', frames_path='./frames/', v
         raise ValueError("Mode must be either inter or extra.")
 
     #Prepare frames
-    ny = frames[0].shape[1]
+    # ny = frames[0].shape[1]
+    ny = 1024
     phi = (np.arange(0, ny) * 1.0 / ny + 0.5 / ny) * 2 * np.pi
     vmax = np.amax(frames[0])
     vmin = np.amin(frames[1])
@@ -423,17 +460,21 @@ def get_frames(solver, data_dir, d_name='sigma_data', frames_path='./frames/', v
         resize = Resize(size)
 
     for frame_id in range(len(frames)):
-        # img = np.clip(frames[frame_id], vmin, vmax * (1.12614 ** (frame_id + 1)))
-        img = frames[frame_id]
-        # print(np.amin(img), np.amax(img))
+        if not mode:
+            img = frames[frame_id]
+        else:
+            # apply trick
+            img = np.clip(frames[frame_id], vmin, vmax * (1.12614 ** (frame_id + 1)))
         if size:
             img = resize(img)
         path = frames_path + str(frame_id) + '.png'
+        plt.figure(figsize=(8, 8))
         if polar:
             plt.subplot(1, 1, 1, projection='polar')
             rp1, rp2 = np.meshgrid(phi, log_grid)
             plt.pcolormesh(rp1, rp2, img)
             plt.axis([0, 2 * np.pi, 0, 2])
+            plt.gca().axis('off')
             plt.savefig(path)
             plt.close()
             continue
